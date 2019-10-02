@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.2)
-project(xdag)
+project(xdag C)
 
 # Use a different compiler
 # http://www.cmake.org/Wiki/CMake_FAQ#How_do_I_use_a_different_compiler.3F
 # it must be done before any language is set (before project|enable_language command)
-# set(CMAKE_C_COMPILER "gcc-7")
-# set(CMAKE_CXX_COMPILER "g++-7")
+# set(CMAKE_C_COMPILER "gcc-8")
+# set(CMAKE_CXX_COMPILER "g++-8")
 # usually avoid this by using environment variables:
 #   mkdir build-gcc && cd build-gcc && CC=gcc-7 CXX=g++-7 cmake ..
 
@@ -96,11 +96,8 @@ endif()
 target_link_libraries(
   ${PROJECT_NAME}
   ${CMAKE_THREAD_LIBS_INIT}
-)
-
-target_link_libraries(
-  ${PROJECT_NAME}
   ${OPENSSL_LIBRARIES}
+  m
 )
 
 add_executable(

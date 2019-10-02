@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "hash.h"
 
-#if defined (__MACOS__) || defined (__APPLE__) 
+#if defined (__MACOS__) || defined (__APPLE__) || defined(__linux__)
 //no need optimized secp256k1 for mac
 #define USE_OPTIMIZED_EC 0 // 0 disactivate, 1 activated, 2 test openssl vs secp256k1
 #else
