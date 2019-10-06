@@ -262,6 +262,7 @@ static int close_connection(struct xconnection *conn, int error, const char *mes
 		pthread_mutex_unlock(&t->mutex);
 		return -1;
 	}
+	dnet_info("DNET close connection start nfd %d nconns %d ",nfd,nconns);
 	if(dnet_connection_close_notify) {
 		(*dnet_connection_close_notify)(conn);
 	}
