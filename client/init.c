@@ -329,12 +329,13 @@ int setup_pool(struct startup_parameters *parameters)
 
 	xdag_mess("Starting synchonization engine...");
 	if(xdag_sync_init()) return -1;
-	xdag_mess("Starting dnet transport...");
-	printf("Transport module: ");
-	if(xdag_transport_start(parameters->transport_flags, parameters->transport_threads, parameters->bind_to, parameters->addrports_count, parameters->addr_ports)) return -1;
 
 	xdag_mess("Reading hosts database...");
 	if(xdag_netdb_init(parameters->pool_configuration.node_address, parameters->addrports_count, parameters->addr_ports)) return -1;
+
+	xdag_mess("Starting dnet transport...");
+	printf("Transport module: ");
+	if(xdag_transport_start(parameters->transport_flags, parameters->transport_threads, parameters->bind_to, parameters->addrports_count, parameters->addr_ports)) return -1;
 
 	if(parameters->is_rpc) {
 		xdag_mess("Initializing RPC service...");

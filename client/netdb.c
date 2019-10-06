@@ -377,7 +377,7 @@ int xdag_netdb_init(const char *our_host_str, int npairs, const char **addr_port
 	for (int i = 0; i < npairs; ++i) {
 		find_add_ipport(&h, addr_port_pairs[i], 0);
 	}
-
+	/*
 	pthread_t t;
 	if (pthread_create(&t, 0, monitor_thread, 0)) {
 		xdag_fatal("Can't start netdb thread\n");
@@ -394,6 +394,7 @@ int xdag_netdb_init(const char *our_host_str, int npairs, const char **addr_port
 	if(pthread_detach(t)) {
 		xdag_err("detach refresh_thread failed.");
 	}
+	*/
 
 	return 0;
 }
