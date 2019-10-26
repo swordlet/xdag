@@ -33,11 +33,14 @@ include(cmake/ProjectSecp256k1.cmake)
 #[2]end
 
 #[3]download and compile projects in hunter
+hunter_add_package(Snappy)
+find_package(Snappy CONFIG REQUIRED)
+
 hunter_add_package(rocksdb)
 find_package(RocksDB CONFIG REQUIRED)
 
-#hunter_add_package(OpenSSL)
-#find_package(OpenSSL REQUIRED)
+hunter_add_package(OpenSSL)
+find_package(OpenSSL REQUIRED)
 #[3]end
 
 #[4]find original libraries in system start
@@ -45,23 +48,10 @@ find_package(Threads QUIET)
 if(NOT Threads_FOUND)
   message(FATAL_ERROR "Failed to find pthreads dependency!")
 endif()
-
-find_package(OpenSSL REQUIRED)
-message(STATUS "Using OpenSSL include dir at ${OPENSSL_INCLUDE_DIR}")
-include_directories(${OPENSSL_INCLUDE_DIR})
-if(STATIC AND NOT IOS)
-  if(UNIX)
-    set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};${CMAKE_DL_LIBS};${CMAKE_THREAD_LIBS_INIT}")
-  endif()
-endif()
 #[4]end
 
 #[5]include directories of external libraries
-#include_directories(
-#        ${OPENSSL_INCLUDE_DIR}
-#        ${SECP256K1_INCLUDE_DIR}
-#        ${ROCKSDB_INCLUDE_DIR}
-#)
+
 #[5]end
 
 #[6]add source file start
@@ -126,10 +116,12 @@ add_executable(
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
-        ${OPENSSL_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
-        RocksDB::rocksdb
         Secp256k1
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        RocksDB::rocksdb
+        Snappy::snappy
         m
 )
 #[9]end
