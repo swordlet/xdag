@@ -345,8 +345,9 @@ int xdag_rsdb_put_orpbi(XDAG_RSDB* rsdb, struct block_internal* bi, struct xdag_
     int retcode = 0;
     char key[ 1 + sizeof(xdag_hashlow_t) ] = {[0] = HASH_ORP_BLOCK_INTERNAL};
     const size_t vlen = sizeof(struct block_internal) + sizeof(struct xdag_block);
-    char val[vlen] = {0};
-    
+    char val[vlen];
+   
+    memset(val,0,vlen);
     memcpy(key + 1, bi->hash, sizeof(xdag_hashlow_t));
     memcpy(val, bi, sizeof(struct block_internal));
     memcpy(val + sizeof(struct block_internal), xb, sizeof(struct xdag_block));
