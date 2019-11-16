@@ -584,7 +584,8 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
     newBlock->field[0].transport_header = 0;
     xdag_hash(newBlock, sizeof(struct xdag_block), tmpNodeBlock.hash);
 
-    if(pt = xdag_rsdb_get_bi(tmpNodeBlock.hash)) {
+		pt = xdag_rsdb_get_bi(tmpNodeBlock.hash);
+    if(pt) {
         free(pt);
         pt = NULL;
         return 0;

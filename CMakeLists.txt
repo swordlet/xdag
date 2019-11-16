@@ -36,6 +36,9 @@ include(cmake/ProjectSecp256k1.cmake)
 hunter_add_package(Snappy)
 find_package(Snappy CONFIG REQUIRED)
 
+hunter_add_package(lz4)
+find_package(lz4 CONFIG REQUIRED)
+
 hunter_add_package(rocksdb)
 find_package(RocksDB CONFIG REQUIRED)
 
@@ -122,6 +125,7 @@ target_link_libraries(
         OpenSSL::Crypto
         RocksDB::rocksdb
         Snappy::snappy
+        lz4::lz4
         m
 )
 #[9]end
