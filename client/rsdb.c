@@ -100,8 +100,7 @@ int xdag_rsdb_open(XDAG_RSDB* rsdb)
     char *errmsg = NULL;
     
     rsdb->db = rocksdb_open(rsdb->options, rsdb->config->db_path, &errmsg);
-    if(errmsg)
-    {
+    if(errmsg) {
         printf("rocks db open failed error message %s\n",errmsg);
         return XDAG_RSDB_OPEN_ERROR;
     }
@@ -489,7 +488,7 @@ int xdag_rsdb_put_bi(XDAG_RSDB* rsdb, struct block_internal* bi)
     char key[klen];
     memset(key,0,klen);
     memcpy(key + 1, bi->hash, klen - 1);
-    retcode = xdag_rsdb_putkey(rsdb, key, klen, bi, sizeof(struct block_internal));
+    retcode = xdag_rsdb_putkey(rsdb, key, klen, (const char*)bi, sizeof(struct block_internal));
     if(retcode) {
         return retcode;
     }
@@ -505,7 +504,7 @@ int xdag_rsdb_put_orpbi(XDAG_RSDB* rsdb, struct block_internal* bi)
     char key[klen];
     memset(key,0,klen);
     memcpy(key + 1, bi->hash, klen - 1);
-    retcode = xdag_rsdb_putkey(rsdb, key, klen, bi, sizeof(struct block_internal));
+    retcode = xdag_rsdb_putkey(rsdb, key, klen, (const char*)bi, sizeof(struct block_internal));
     if(retcode) {
         return retcode;
     }
@@ -520,7 +519,7 @@ int xdag_rsdb_put_ourbi(XDAG_RSDB* rsdb, struct block_internal* bi)
     char key[klen];
     memset(key,0,klen);
     memcpy(key + 1, bi->hash, klen - 1);
-    retcode = xdag_rsdb_putkey(rsdb, key, klen, bi, sizeof(struct block_internal));
+    retcode = xdag_rsdb_putkey(rsdb, key, klen, (const char*)bi, sizeof(struct block_internal));
     if(retcode) {
         return retcode;
     }
