@@ -331,7 +331,7 @@ int xdag_rsdb_put_stats(XDAG_RSDB* rsdb)
     return XDAG_RSDB_OP_SUCCESS;
 }
 
-struct block_internal* xdag_rsdb_get_bi(void* hp)
+struct block_internal* xdag_rsdb_get_bi(const void* hp)
 {
     if (!hp) return NULL;
     struct block_internal* bi = NULL;

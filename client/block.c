@@ -574,21 +574,21 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 	int signinmask = 0, signoutmask = 0;
 	int inmask = 0, outmask = 0, remark_index = 0;
 	int verified_keys_mask = 0, err = 0, type = 0;
-    struct block_internal tmpNodeBlock, *blockRef = NULL, *blockRef0 = NULL, *pt = NULL;
-    struct block_internal* nodeBlock = NULL;
+    	struct block_internal tmpNodeBlock, *blockRef = NULL, *blockRef0 = NULL, *pt = NULL;
+    	struct block_internal* nodeBlock = NULL;
 	struct block_internal* blockRefs[XDAG_BLOCK_FIELDS-1] = {0};
 	xdag_diff_t diff0, diff;
 //	int32_t cache_hit = 0, cache_miss = 0;
 
-    memset(&tmpNodeBlock, 0, sizeof(struct block_internal));
-    newBlock->field[0].transport_header = 0;
-    xdag_hash(newBlock, sizeof(struct xdag_block), tmpNodeBlock.hash);
-
-    if(pt = xdag_rsdb_get_bi(tmpNodeBlock.hash)) {
-        free(pt);
-        pt = NULL;
-        return 0;
-    }
+	memset(&tmpNodeBlock, 0, sizeof(struct block_internal));
+	newBlock->field[0].transport_header = 0;
+	xdag_hash(newBlock, sizeof(struct xdag_block), tmpNodeBlock.hash);
+	pt = xdag_rsdb_get_bi(tmpNodeBlock.hash);
+	if(pt) {
+		free(pt);
+		pt = NULL;
+		return 0;
+	}
 
 	if(xdag_type(newBlock, 0) != g_block_header_type) {
 		i = xdag_type(newBlock, 0);
@@ -1747,8 +1747,8 @@ int xdag_set_balance(xdag_hash_t hash, xdag_amount_t balance)
 int64_t xdag_get_block_pos(const xdag_hash_t hash, xtime_t *t, struct xdag_block *block)
 {
 	if (block) pthread_mutex_lock(&block_mutex);
-    struct block_internal *bi = xdag_rsdb_get_bi(hash);
-    int64_t pos = 0;
+    	struct block_internal *bi = xdag_rsdb_get_bi(hash);
+    	int64_t pos = 0;
 
 	if (!bi) {
 		if (block) pthread_mutex_unlock(&block_mutex);
@@ -1762,9 +1762,9 @@ int64_t xdag_get_block_pos(const xdag_hash_t hash, xtime_t *t, struct xdag_block
 	if (block) pthread_mutex_unlock(&block_mutex);
 
 	*t = bi->time;
-    pos = bi->storage_pos;
-    free(bi);
-    bi = NULL;
+    	pos = bi->storage_pos;
+    	free(bi);
+    	bi = NULL;
 	return pos;
 }
 
