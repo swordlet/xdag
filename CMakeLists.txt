@@ -12,7 +12,7 @@ enable_language(C ASM)
 #[1]set c/c++ standard and compile flags & definitions
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_FLAGS "-std=gnu11 -O3 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable")
+set(CMAKE_C_FLAGS "-std=gnu11 -O3 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable")
 OPTION(DEBUG "Build the project using debugging code" OFF)
 
 if(DEBUG)
@@ -33,11 +33,7 @@ include(cmake/ProjectSecp256k1.cmake)
 #[2]end
 
 #[3]download and compile projects in hunter
-hunter_add_package(Snappy)
-find_package(Snappy CONFIG REQUIRED)
-
-hunter_add_package(rocksdb)
-find_package(RocksDB CONFIG REQUIRED)
+find_package(RocksDB CONFIG)
 
 hunter_add_package(OpenSSL)
 find_package(OpenSSL REQUIRED)
@@ -120,8 +116,7 @@ target_link_libraries(
         Secp256k1
         OpenSSL::SSL
         OpenSSL::Crypto
-        RocksDB::rocksdb
-        Snappy::snappy
+	RocksDB::rocksdb
         m
 )
 #[9]end
