@@ -433,7 +433,9 @@ struct block_internal* xdag_rsdb_get_ourbi(XDAG_RSDB* rsdb, xdag_hashlow_t hash)
     int retcode = 0;
     const size_t klen = 1 + sizeof(xdag_hashlow_t);
     size_t vlen = 0;
-    char key[klen] = {[0] = HASH_OUR_BLOCK_INTERNAL};
+    //char key[klen] = {[0] = HASH_OUR_BLOCK_INTERNAL};
+    char key[klen];
+    memset(key,0,klen);
     memcpy(key + 1, hash, klen - 1);
     bi = xdag_rsdb_getkey(key, &klen, &vlen);
     if(retcode) {
