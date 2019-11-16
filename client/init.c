@@ -91,6 +91,7 @@ int xdag_init(int argc, char **argv, int isGui)
 	}
 
 	if(pre_init() < 0) {
+		printf("xdag pre init failed \n");
 		return -1;
 	}
 
@@ -283,11 +284,20 @@ int pre_init(void)
 
 	//TODO: future xdag.wallet
 	xdag_mess("Reading wallet...");
-	if(dnet_key_init() < 0) return -1;
+	if(dnet_key_init() < 0) {
+		printf("xdag dnet key init failed\n");
+		return -1;
+	}
 	
-	if(xdag_wallet_init()) return -1;
+	if(xdag_wallet_init()){
+		printf("xdag wallet init failed\n");
+		return -1;
+	}
     
-    if(xdag_rsdb_pre_init()) return -1;
+	if(xdag_rsdb_pre_init()) {
+		printf("xdag rocks db pre init failed\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -332,13 +342,12 @@ int setup_pool(struct startup_parameters *parameters)
 
 	xdag_mess("Starting synchonization engine...");
 	if(xdag_sync_init()) return -1;
-
-	xdag_mess("Reading hosts database...");
-	if(xdag_netdb_init(parameters->pool_configuration.node_address, parameters->addrports_count, parameters->addr_ports)) return -1;
-
 	xdag_mess("Starting dnet transport...");
 	printf("Transport module: ");
 	if(xdag_transport_start(parameters->transport_flags, parameters->transport_threads, parameters->bind_to, parameters->addrports_count, parameters->addr_ports)) return -1;
+
+	xdag_mess("Reading hosts database...");
+	if(xdag_netdb_init(parameters->pool_configuration.node_address, parameters->addrports_count, parameters->addr_ports)) return -1;
 
 	if(parameters->is_rpc) {
 		xdag_mess("Initializing RPC service...");

@@ -262,7 +262,6 @@ static int close_connection(struct xconnection *conn, int error, const char *mes
 		pthread_mutex_unlock(&t->mutex);
 		return -1;
 	}
-	dnet_info("DNET close connection start nfd %d nconns %d ",nfd,nconns);
 	if(dnet_connection_close_notify) {
 		(*dnet_connection_close_notify)(conn);
 	}
@@ -827,7 +826,7 @@ int dnet_init(int argc, char **argv)
 		daemonize();
 	}
 
-	angelize();
+	//angelize();
 	for(i = 0; i < nthreads; ++i) {
 		pthread_create(&t, 0, xthread_main, (void *)(long)i);
 	}

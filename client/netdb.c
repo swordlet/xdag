@@ -324,27 +324,27 @@ static void *refresh_thread(void *arg)
 	for (;;) {
 		time_t prev_time = time(0);
 
-		if(!g_prevent_auto_refresh) {
-			xdag_mess("try to refresh white-list...");
-
-			char *resp = http_get(WHITE_URL);
-			if(resp) {
-				if(is_valid_whitelist(resp)) {
-					pthread_mutex_lock(&g_white_list_mutex);
-					FILE *f = xdag_open_file(DATABASEWHITE, "w");
-					if(f) {
-						fwrite(resp, 1, strlen(resp), f);
-						fclose(f);
-					}
-					pthread_mutex_unlock(&g_white_list_mutex);
-				} else {
-					xdag_err("white-list format is incorrect. \n%s", resp);
-				}
-
-				xdag_info("\n%s", resp);
-				free(resp);
-			}
-		}
+//		if(!g_prevent_auto_refresh) {
+//			xdag_mess("try to refresh white-list...");
+//
+//			char *resp = http_get(WHITE_URL);
+//			if(resp) {
+//				if(is_valid_whitelist(resp)) {
+//					pthread_mutex_lock(&g_white_list_mutex);
+//					FILE *f = xdag_open_file(DATABASEWHITE, "w");
+//					if(f) {
+//						fwrite(resp, 1, strlen(resp), f);
+//						fclose(f);
+//					}
+//					pthread_mutex_unlock(&g_white_list_mutex);
+//				} else {
+//					xdag_err("white-list format is incorrect. \n%s", resp);
+//				}
+//
+//				xdag_info("\n%s", resp);
+//				free(resp);
+//			}
+//		}
 
 		while (time(0) - prev_time < 900) { // refresh every 15 minutes
 			sleep(1);
@@ -377,7 +377,7 @@ int xdag_netdb_init(const char *our_host_str, int npairs, const char **addr_port
 	for (int i = 0; i < npairs; ++i) {
 		find_add_ipport(&h, addr_port_pairs[i], 0);
 	}
-	/*
+
 	pthread_t t;
 	if (pthread_create(&t, 0, monitor_thread, 0)) {
 		xdag_fatal("Can't start netdb thread\n");
@@ -394,7 +394,6 @@ int xdag_netdb_init(const char *our_host_str, int npairs, const char **addr_port
 	if(pthread_detach(t)) {
 		xdag_err("detach refresh_thread failed.");
 	}
-	*/
 
 	return 0;
 }
