@@ -6,8 +6,8 @@ find_path(UV_ROOT_DIR
 message("uv root dir ${UV_ROOT_DIR}")
 
 find_path(UV_DIR
-        NAMES include/uv.h
-        PATHS /usr/local/ /usr/local/opt/gtest/ /opt/local/ /usr/
+        NAMES uv.h
+        PATHS ${UV_ROOT_DIR}/include
         NO_DEFAULT_PATH
         )
 message("uv dir ${UV_DIR}")

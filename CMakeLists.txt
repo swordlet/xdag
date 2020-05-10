@@ -35,6 +35,7 @@ include(cmake/Secp256k1Config.cmake)
 include(cmake/OpenSSLConfig.cmake)
 include(cmake/TCMallocConfig.cmake)
 include(cmake/UVConfig.cmake)
+include(cmake/Protobufc.cmake)
 #[2]end
 
 #[3]download and compile projects in hunter
@@ -74,6 +75,8 @@ else()
 endif()
 
 find_package(UV CONFIG)
+
+find_package(PROTOBUFC CONFIG)
 #[3]end
 
 #[4]find original libraries in system start
@@ -93,12 +96,14 @@ file(GLOB_RECURSE DAGGER_SOURCES
         dfslib/*.c
         dnet/*.c
         ldus/*.c
+        libp2p/*.c
         )
 file(GLOB_RECURSE DAGGER_HEADERS
         client/*.h
         dfslib/*.h
         dnet/*.h
         ldus/*.h
+        libp2p/*.h
         )
 set(SHA256_LINUX_ASM_SOURCES
         client/algorithms/sha256-mb-x86_64.s
@@ -165,6 +170,7 @@ target_link_libraries(
         ${TCMALLOC_LIBRARY}
         ${PROFILER_LIBRARY}
         ${UV_LIBRARY}
+        ${PROTOBUFC_LIBRARY}
         m
 	    dl
 )
