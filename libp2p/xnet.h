@@ -9,6 +9,10 @@ extern "C" {
 extern int xdag_libp2p_init(void);
 
 extern int xdag_libp2p_identify(void);
+
+extern int xdag_libp2p_dht_find_peers(void);
+
+extern int xdag_libp2p_connect(void);
 	
 #ifdef __cplusplus
 };

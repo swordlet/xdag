@@ -96,6 +96,8 @@ file(GLOB_RECURSE DAGGER_SOURCES
         dfslib/*.c
         dnet/*.c
         ldus/*.c
+        libp2p/mutiaddr/*.c
+        libp2p/mutihash/*.c
         libp2p/*.c
         )
 file(GLOB_RECURSE DAGGER_HEADERS
@@ -103,6 +105,8 @@ file(GLOB_RECURSE DAGGER_HEADERS
         dfslib/*.h
         dnet/*.h
         ldus/*.h
+        libp2p/mutiaddr/*.h
+        libp2p/mutihash/*h
         libp2p/*.h
         )
 set(SHA256_LINUX_ASM_SOURCES
