@@ -116,6 +116,8 @@ list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*dvstime.c$")
 list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*statsdaemon.c$")
 #[7]end
 
+add_subdirectory(randomx)
+
 #[8]compile executable object start
 if(APPLE)
   add_executable(
