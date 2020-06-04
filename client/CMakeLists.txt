@@ -33,6 +33,7 @@ target_include_directories(xdagcore
 
 target_link_libraries(xdagcore
         PUBLIC
+        ${DNET_LIBRARY}
         ${ALGO_LIBRARY}
         ${HTTP_LIBRARY}
         ${JSON_RPC_LIBRARY}
@@ -51,6 +52,13 @@ target_link_libraries(xdagcore
         m
         dl
 )
+
+add_executable(xdag
+        main.cpp)
+
+target_link_libraries(xdag
+        PUBLIC
+        ${XDAG_CORE_LIBRARY})
 
 set(XDAG_CORE_LIBRARY "xdagcore" CACHE STRING "xdag core library")
 set(XDAG_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE STRING "xdag core include dir")

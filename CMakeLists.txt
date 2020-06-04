@@ -97,77 +97,7 @@ add_subdirectory(client/utils)
 add_subdirectory(client/websocket)
 add_subdirectory(client)
 
-add_executable(xdag
-        client/main.cpp)
-
-target_link_libraries(xdag
-        PUBLIC
-        ${XDAG_CORE_LIBRARY}
-        ${DNET_LIBRARY}
-        ${ALGO_LIBRARY}
-        ${HTTP_LIBRARY}
-        ${JSON_RPC_LIBRARY}
-        ${UTILS_LIBRARY}
-        ${WEBSOCKET_LIBRARY}
-        ${RADOMX_LIBRARY})
-
-#[8]compile executable object start
-#if(APPLE)
-#  add_executable(
-#          ${PROJECT_NAME}
-#          ${DAGGER_HEADERS}
-#          ${DAGGER_SOURCES}
-#          ${SHA256_MAC_ASM_SOURCES}
-#  )
-#else(UNIX)
-#  add_executable(
-#          ${PROJECT_NAME}
-#          ${DAGGER_HEADERS}
-#          ${DAGGER_SOURCES}
-#          ${SHA256_LINUX_ASM_SOURCES}
-#  )
-#endif()
-#
-#add_executable(
-#        cgi_stats
-#        client/statsdaemon.cpp
-#)
-#
-#add_executable(
-#        cgi_block
-#        client/block.cgi.c
-#)
-#[8]end
-
-#[9]link libraries start
-#target_include_directories(
-#        ${PROJECT_NAME}
-#        PUBLIC
-#        ${RocksDB_INCLUDE_DIR}
-#        ${SECP256K1_INCLUDE_DIR}
-#        ${OPENSSL_INCLUDE_DIR}
-#        ${TCMALLOC_INCLUDE_DIR}
-#        ${UV_INCLUDE_DIR}
-#        ${RANDOMX_INCLUDE_DIR}
-#)
-#target_link_libraries(
-#        ${PROJECT_NAME}
-#        PUBLIC
-#        ${CMAKE_THREAD_LIBS_INIT}
-#        ${RocksDB_LIBRARY}
-#        ${SECP256K1_LIBRARY}
-#        ${OPENSSL_SSL_LIBRARY}
-#        ${OPENSSL_CRYPTO_LIBRARY}
-#        ${TCMALLOC_LIBRARY}
-#        ${PROFILER_LIBRARY}
-#        ${UV_LIBRARY}
-#        ${RANDOMX_LIBRARY}
-#        m
-#	    dl
-#)
-#[9]end
-
-#[10]build test case
+#build test case
 if(BUILD_TEST)
   enable_testing()
   include(cmake/GTestConfig.cmake)
