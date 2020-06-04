@@ -69,47 +69,55 @@ typedef enum xd_rsdb_key_type {
     HASH_BLOCK_CACHE                      =  0x25
 } xd_rsdb_key_t;
 
-char* xd_rsdb_full_merge(void* state, const char* key, size_t key_length,
-                         const char* existing_value,
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+char *xd_rsdb_full_merge(void *state, const char *key, size_t key_length,
+                         const char *existing_value,
                          size_t existing_value_length,
-                         const char* const* operands_list,
-                         const size_t* operands_list_length, int num_operands,
-                         unsigned char* success, size_t* new_value_length);
-char* xd_rsdb_partial_merge(void*, const char* key, size_t key_length,
-                            const char* const* operands_list,
-                            const size_t* operands_list_length, int num_operands,
-                            unsigned char* success, size_t* new_value_length);
-const char* xd_rsdb_merge_operator_name(void*);
+                         const char *const *operands_list,
+                         const size_t *operands_list_length, int num_operands,
+                         unsigned char *success, size_t *new_value_length);
+char *xd_rsdb_partial_merge(void *, const char *key, size_t key_length,
+                            const char *const *operands_list,
+                            const size_t *operands_list_length, int num_operands,
+                            unsigned char *success, size_t *new_value_length);
+const char *xd_rsdb_merge_operator_name(void *);
 
 xd_rsdb_op_t xd_rsdb_pre_init(void);
 xd_rsdb_op_t xd_rsdb_init(xdag_time_t *time);
-xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db);
-xd_rsdb_op_t xd_rsdb_conf_check(xd_rsdb_t  *db);
-xd_rsdb_op_t xd_rsdb_conf(xd_rsdb_t* db);
-xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t* db);
-xd_rsdb_op_t xd_rsdb_close(xd_rsdb_t* db);
+xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t *db);
+xd_rsdb_op_t xd_rsdb_conf_check(xd_rsdb_t *db);
+xd_rsdb_op_t xd_rsdb_conf(xd_rsdb_t *db);
+xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t *db);
+xd_rsdb_op_t xd_rsdb_close(xd_rsdb_t *db);
 
-void* xd_rsdb_getkey(const char* key, const size_t klen, size_t* vlen);
-xd_rsdb_op_t xd_rsdb_get_bi(xdag_hashlow_t hash, struct block_internal*);
+void *xd_rsdb_getkey(const char *key, const size_t klen, size_t *vlen);
+xd_rsdb_op_t xd_rsdb_get_bi(xdag_hashlow_t hash, struct block_internal *);
 xd_rsdb_op_t xd_rsdb_get_ournext(xdag_hashlow_t hash, xdag_hashlow_t next);
-xd_rsdb_op_t xd_rsdb_get_orpblock(xdag_hashlow_t hash, struct xdag_block*);
+xd_rsdb_op_t xd_rsdb_get_orpblock(xdag_hashlow_t hash, struct xdag_block *);
 xd_rsdb_op_t xd_rsdb_get_stats(void);
 xd_rsdb_op_t xd_rsdb_get_extstats(void);
 xd_rsdb_op_t xd_rsdb_get_remark(xdag_hashlow_t hash, xdag_remark_t);
 xd_rsdb_op_t xd_rsdb_get_cacheblock(xdag_hashlow_t hash, struct xdag_block *xb);
 
-xd_rsdb_op_t xd_rsdb_putkey(const char* key, size_t klen, const char* value, size_t vlen);
-xd_rsdb_op_t xd_rsdb_put_backref(xdag_hashlow_t backref, struct block_internal*);
+xd_rsdb_op_t xd_rsdb_putkey(const char *key, size_t klen, const char *value, size_t vlen);
+xd_rsdb_op_t xd_rsdb_put_backref(xdag_hashlow_t backref, struct block_internal *);
 xd_rsdb_op_t xd_rsdb_put_ournext(xdag_hashlow_t hash, xdag_hashlow_t next);
-xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_key_t type, const char* value, size_t vlen);
-xd_rsdb_op_t xd_rsdb_put_orpblock(xdag_hashlow_t hash, struct xdag_block* xb);
+xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_key_t type, const char *value, size_t vlen);
+xd_rsdb_op_t xd_rsdb_put_orpblock(xdag_hashlow_t hash, struct xdag_block *xb);
 xd_rsdb_op_t xd_rsdb_put_stats(xdag_time_t time);
 xd_rsdb_op_t xd_rsdb_put_extstats(void);
 xd_rsdb_op_t xd_rsdb_put_remark(struct block_internal *bi, xdag_remark_t strbuf);
 xd_rsdb_op_t xd_rsdb_put_cacheblock(xdag_hashlow_t hash, struct xdag_block *xb);
 
-xd_rsdb_op_t xd_rsdb_delkey(const char* key, size_t klen);
+xd_rsdb_op_t xd_rsdb_delkey(const char *key, size_t klen);
 xd_rsdb_op_t xd_rsdb_del_orpblock(xdag_hashlow_t hash);
-xd_rsdb_op_t xd_rsdb_merge_bi(struct block_internal* bi);
+xd_rsdb_op_t xd_rsdb_merge_bi(struct block_internal *bi);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

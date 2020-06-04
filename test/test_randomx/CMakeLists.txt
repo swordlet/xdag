@@ -46,7 +46,7 @@ include_directories(test_core
         ${GTEST_INCLUDE_DIR}
         ../../randomx/src/crypto/randomx
         ../../randomx/src/crypto/common
-        ${RANDOMX_INCLUDE})
+        ${RANDOMX_INCLUDE_DIR})
 
 target_link_libraries(test_randomx
         PRIVATE

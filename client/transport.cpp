@@ -16,7 +16,7 @@
 #include "version.h"
 #include "../dnet/dnet_main.h"
 #include "utils/log.h"
-#include "utils/random.h"
+#include "random_utils.h"
 
 #define NEW_BLOCK_TTL     5
 #define REQUEST_WAIT      64
@@ -217,12 +217,12 @@ static int process_transport_block(struct xdag_block *received_block, struct xco
 static int block_arrive_callback(void *packet, void *connection)
 {
 	struct xdag_block *received_block = (struct xdag_block *)packet;
-
-	const enum xdag_field_type first_field_type = xdag_type(received_block, 0);
-	if(first_field_type == g_block_header_type) {
-        xdag_sync_add_block(received_block, connection);
-    } else if(first_field_type == XDAG_FIELD_NONCE) {
-		process_transport_block(received_block, connection);
+	struct xconnection *from_connection = (struct xconnection *)connection;
+	uint64_t xdag_field_type = xdag_type(received_block, 0);
+	if(xdag_field_type == g_block_header_type) {
+        xdag_sync_add_block(received_block, from_connection);
+    } else if(xdag_field_type == XDAG_FIELD_NONCE) {
+		process_transport_block(received_block, from_connection);
 	} else {
 		return  -1;
 	}
@@ -248,7 +248,8 @@ static int conn_open_check_callback(uint32_t ip, uint16_t port)
 
 static void conn_close_notify_callback(void *conn)
 {
-	g_task_info[dnet_get_nconnection(conn)] = (struct xdag_task_info){0};
+	struct xconnection* from_connection = (struct xconnection*)conn;
+	g_task_info[dnet_get_nconnection(from_connection)] = (struct xdag_task_info){0};
 
 	if (reply_connection == conn)
 		reply_connection = 0;
@@ -263,7 +264,7 @@ static void conn_close_notify_callback(void *conn)
 */
 int xdag_transport_start(int flags, int nthreads, const char *bindto, int npairs, const char **addr_port_pairs)
 {
-	const char **argv = malloc((npairs + 7) * sizeof(char *));
+	const char **argv = (const char **)malloc((npairs + 7) * sizeof(char *));
 	if (!argv) return -1;
 
 	int argc = 0;
@@ -314,7 +315,7 @@ int xdag_transport_start(int flags, int nthreads, const char *bindto, int npairs
 		return -1;
 	}
 
-	g_task_info = calloc(sizeof(struct xdag_task_info), dnet_get_maxconnections());
+	g_task_info = (struct xdag_task_info *)calloc(sizeof(struct xdag_task_info), dnet_get_maxconnections());
 	if (g_task_info == NULL) {
 		return -1;
 	}
@@ -411,7 +412,13 @@ int xdag_request_sums(xtime_t start_time, xtime_t end_time, struct xdag_storage_
 int xdag_send_new_block(struct xdag_block *b)
 {
 	if(is_pool()) {
-		dnet_send_xdag_packet(b, &(struct send_parameters){NULL, 0, 0, NEW_BLOCK_TTL});
+		struct send_parameters parameters;
+		parameters.connection = nullptr;
+		parameters.time_limit = 0;
+		parameters.broadcast = 0;
+		parameters.time_to_live = NEW_BLOCK_TTL;
+
+		dnet_send_xdag_packet(b, &parameters);
 	} else {
 		xdag_send_block_via_pool(b);
 	}
@@ -427,11 +434,16 @@ int xdag_net_command(const char *cmd, void *out)
 /* sends the package, conn is the same as in function dnet_send_xdag_packet */
 int xdag_send_packet(struct xdag_block *b, struct xconnection *conn, int broadcast)
 {
+	struct send_parameters parameters;
 	if (conn != NULL && dnet_test_connection(conn) < 0) {
 		conn = NULL;
 	}
 
-	dnet_send_xdag_packet(b, &(struct send_parameters){conn, 0, broadcast, 0});
+	parameters.connection = conn;
+	parameters.time_limit = 0;
+	parameters.broadcast = broadcast;
+	parameters.time_to_live = 0;
+	dnet_send_xdag_packet(b, &parameters);
 	
 	return 0;
 }
@@ -479,12 +491,13 @@ static void *xdag_update_rip_thread(void *arg)
 static void *print_callback(void *file, void* conn)
 {
 	char buf[32];
-	dnet_stringify_conn_info(buf, sizeof(buf), conn);
+	struct xconnection* from_connection = (struct xconnection*)conn;
+	dnet_stringify_conn_info(buf, sizeof(buf), from_connection);
 	size_t len = strlen(buf);
 	fprintf((FILE*)file, "%s %*s %33s %31s %21" PRIu32 "\n",
-		buf, (int)(sizeof(buf) + 4 - len), ((g_task_info[dnet_get_nconnection(conn)].task_type & TASK_REQBLOCKS) ? "yes" : "no"),
-		((g_task_info[dnet_get_nconnection(conn)].task_type & TASK_REQBLOCKS_THREAD) ? "yes" : "no"),
-		((g_task_info[dnet_get_nconnection(conn)].task_type & TASK_REQSUM) ? "yes" : "no"), g_task_info[dnet_get_nconnection(conn)].block_req_counter);
+		buf, (int)(sizeof(buf) + 4 - len), ((g_task_info[dnet_get_nconnection(from_connection)].task_type & TASK_REQBLOCKS) ? "yes" : "no"),
+		((g_task_info[dnet_get_nconnection(from_connection)].task_type & TASK_REQBLOCKS_THREAD) ? "yes" : "no"),
+		((g_task_info[dnet_get_nconnection(from_connection)].task_type & TASK_REQSUM) ? "yes" : "no"), g_task_info[dnet_get_nconnection(from_connection)].block_req_counter);
 	return NULL;
 }
 

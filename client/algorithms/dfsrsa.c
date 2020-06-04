@@ -1135,7 +1135,7 @@ int dfsrsa_keygen(dfsrsa_t *privkey, dfsrsa_t *pubkey, int keylen)
 #include <limits.h>
 #include <unistd.h>
 #include <sys/times.h>
-#include "../dfslib/dfslib_random.h"
+#include "dfslib_random.h"
 
 static void dfsrsa_fillrand(dfsrsa_t *arr, int len)
 {

@@ -6,9 +6,6 @@
 #include "block.h"
 #include "transport.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct sync_block {
     struct xdag_block b;
@@ -30,9 +27,6 @@ extern int xdag_sync_pop_block(struct xdag_block *b);
 
 /* initialized block synchronization */
 extern int xdag_sync_init(void);
-	
-#ifdef __cplusplus
-};
-#endif
+
 
 #endif

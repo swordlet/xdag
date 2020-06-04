@@ -6,10 +6,10 @@ enable_language(C ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_FLAGS "-std=gnu11 -O0 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable")
+set(CMAKE_C_FLAGS "-std=gnu11 -O0 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable -Wno-writable-strings")
 #set gnu compiler c flags
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-	set(CMAKE_C_FLAGS "-std=gnu11 -O0 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable")
+	set(CMAKE_C_FLAGS "-std=gnu11 -O0 -g -Wall -Wmissing-prototypes -Wno-unused-result -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable -Wno-writable-strings")
 endif()
 
 OPTION(DEBUG "Build the project using debugging code" OFF)
@@ -87,89 +87,84 @@ endif()
 include_directories(${RocksDB_INCLUDE_DIR})
 #[5]end
 
-#[6]add source file start
-file(GLOB_RECURSE DAGGER_SOURCES
-        client/*.c
-        dfslib/*.c
-        dnet/*.c
-        ldus/*.c
-        )
-file(GLOB_RECURSE DAGGER_HEADERS
-        client/*.h
-        dfslib/*.h
-        dnet/*.h
-        ldus/*.h
-        )
-set(SHA256_LINUX_ASM_SOURCES
-        client/algorithms/sha256-mb-x86_64.s
-        client/x86_64cpuid.s
-        )
-set(SHA256_MAC_ASM_SOURCES
-        client/algorithms/sha256-mb-x86_64-mac.s
-        client/x86_64cpuid-mac.s
-        )
-#[6]end
-
-#[7]ignore sources that we do not intend to include when building the executable...
-list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*cgi.c$")
-list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*dvstime.c$")
-list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*statsdaemon.c$")
-#[7]end
-
 add_subdirectory(randomx)
+add_subdirectory(client/algorithms)
+add_subdirectory(dnet)
+add_subdirectory(client/http)
+add_subdirectory(client/json-rpc)
+add_subdirectory(client/uthash)
+add_subdirectory(client/utils)
+add_subdirectory(client/websocket)
+add_subdirectory(client)
+
+add_executable(xdag
+        client/main.cpp)
+
+target_link_libraries(xdag
+        PUBLIC
+        ${XDAG_CORE_LIBRARY}
+        ${DNET_LIBRARY}
+        ${ALGO_LIBRARY}
+        ${HTTP_LIBRARY}
+        ${JSON_RPC_LIBRARY}
+        ${UTILS_LIBRARY}
+        ${WEBSOCKET_LIBRARY}
+        ${RADOMX_LIBRARY})
 
 #[8]compile executable object start
-if(APPLE)
-  add_executable(
-          ${PROJECT_NAME}
-          ${DAGGER_HEADERS}
-          ${DAGGER_SOURCES}
-          ${SHA256_MAC_ASM_SOURCES}
-  )
-else(UNIX)
-  add_executable(
-          ${PROJECT_NAME}
-          ${DAGGER_HEADERS}
-          ${DAGGER_SOURCES}
-          ${SHA256_LINUX_ASM_SOURCES}
-  )
-endif()
-
-add_executable(
-        cgi_stats
-        client/statsdaemon.c
-)
-
-add_executable(
-        cgi_block
-        client/block.cgi.c
-)
+#if(APPLE)
+#  add_executable(
+#          ${PROJECT_NAME}
+#          ${DAGGER_HEADERS}
+#          ${DAGGER_SOURCES}
+#          ${SHA256_MAC_ASM_SOURCES}
+#  )
+#else(UNIX)
+#  add_executable(
+#          ${PROJECT_NAME}
+#          ${DAGGER_HEADERS}
+#          ${DAGGER_SOURCES}
+#          ${SHA256_LINUX_ASM_SOURCES}
+#  )
+#endif()
+#
+#add_executable(
+#        cgi_stats
+#        client/statsdaemon.cpp
+#)
+#
+#add_executable(
+#        cgi_block
+#        client/block.cgi.c
+#)
 #[8]end
 
 #[9]link libraries start
-target_include_directories(
-        ${PROJECT_NAME}
-        PUBLIC
-        ${RocksDB_INCLUDE_DIR}
-        ${SECP256K1_INCLUDE_DIR}
-        ${OPENSSL_INCLUDE_DIR}
-        ${TCMALLOC_INCLUDE_DIR}
-        ${UV_INCLUDE_DIR}
-)
-target_link_libraries(
-        ${PROJECT_NAME}
-        PUBLIC
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${RocksDB_LIBRARY}
-        ${SECP256K1_LIBRARY}
-        ${OPENSSL_SSL_LIBRARY}
-        ${OPENSSL_CRYPTO_LIBRARY}
-        ${TCMALLOC_LIBRARY}
-        ${PROFILER_LIBRARY}
-        ${UV_LIBRARY}
-        m
-	    dl
-)
+#target_include_directories(
+#        ${PROJECT_NAME}
+#        PUBLIC
+#        ${RocksDB_INCLUDE_DIR}
+#        ${SECP256K1_INCLUDE_DIR}
+#        ${OPENSSL_INCLUDE_DIR}
+#        ${TCMALLOC_INCLUDE_DIR}
+#        ${UV_INCLUDE_DIR}
+#        ${RANDOMX_INCLUDE_DIR}
+#)
+#target_link_libraries(
+#        ${PROJECT_NAME}
+#        PUBLIC
+#        ${CMAKE_THREAD_LIBS_INIT}
+#        ${RocksDB_LIBRARY}
+#        ${SECP256K1_LIBRARY}
+#        ${OPENSSL_SSL_LIBRARY}
+#        ${OPENSSL_CRYPTO_LIBRARY}
+#        ${TCMALLOC_LIBRARY}
+#        ${PROFILER_LIBRARY}
+#        ${UV_LIBRARY}
+#        ${RANDOMX_LIBRARY}
+#        m
+#	    dl
+#)
 #[9]end
 
 #[10]build test case

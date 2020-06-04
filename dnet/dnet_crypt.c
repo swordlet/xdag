@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <termios.h>
 #include "dnet_system.h"
-#include "../dfslib/dfslib_random.h"
-#include "../dfslib/dfslib_crypt.h"
-#include "../dfslib/dfslib_string.h"
+#include "../client/algorithms/dfslib_random.h"
+#include "../client/algorithms/dfslib_crypt.h"
+#include "../client/algorithms/dfslib_string.h"
 #include "dnet_crypt.h"
 #include "dnet_main.h"
 #include "../client/algorithms/crc.h"

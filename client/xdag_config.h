@@ -1,6 +1,11 @@
 #ifndef _XDAG_CONFIG_H_
 #define _XDAG_CONFIG_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 struct pool_configuration {
 	char *node_address;
 	char *mining_configuration;
@@ -13,5 +18,9 @@ struct pool_configuration {
  * @return (none).
  */
 int get_pool_config(const char *path, struct pool_configuration *pool_configuration);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

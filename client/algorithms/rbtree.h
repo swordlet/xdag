@@ -5,35 +5,43 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ldus_rbtree {
 	struct ldus_rbtree *left;
 	struct ldus_rbtree *right;
 };
 
-static inline struct ldus_rbtree *_rbtree_ptr(struct ldus_rbtree *ptr) { return (struct ldus_rbtree *)((uintptr_t)ptr & ~(uintptr_t)1); }
+static inline struct ldus_rbtree *_rbtree_ptr(struct ldus_rbtree *ptr) {
+	return (struct ldus_rbtree *) ((uintptr_t) ptr & ~(uintptr_t) 1);
+}
 
-static inline int _rbtree_color(struct ldus_rbtree *ptr) { return (uintptr_t)ptr & 1; }
+static inline int _rbtree_color(struct ldus_rbtree *ptr) { return (uintptr_t) ptr & 1; }
 
-static inline struct ldus_rbtree *_rbtree_set_color(struct ldus_rbtree *ptr, int color) { return (struct ldus_rbtree *)(((uintptr_t)ptr & ~(uintptr_t)1) | color); }
+static inline struct ldus_rbtree *_rbtree_set_color(struct ldus_rbtree *ptr, int color) {
+	return (struct ldus_rbtree *) (((uintptr_t) ptr & ~(uintptr_t) 1) | color);
+}
 
 static inline void ldus_rbtree_init(struct ldus_rbtree **proot) { *proot = 0; }
 
 static inline void ldus_rbtree_walk_up(struct ldus_rbtree *root, void (*callback)(struct ldus_rbtree *node)) {
-    if (root) {
+	if (root) {
 		root = _rbtree_ptr(root);
 		if (root->left) ldus_rbtree_walk_up(root->left, callback);
 		if (root->right) ldus_rbtree_walk_up(root->right, callback);
 		callback(root);
-    }
+	}
 }
 
 static inline void ldus_rbtree_walk_right(struct ldus_rbtree *root, void (*callback)(struct ldus_rbtree *node)) {
-    while (root) {
+	while (root) {
 		root = _rbtree_ptr(root);
 		if (root->left) ldus_rbtree_walk_right(root->left, callback);
 		callback(root);
 		root = root->right;
-    }
+	}
 }
 
 static inline void _rbtree_rotate_left(struct ldus_rbtree **proot) {
@@ -187,30 +195,34 @@ static inline int _rbtree_remove_right(struct ldus_rbtree **proot, struct ldus_r
 #define ldus_rbtree_define_prefix(lessthan, prefix, postfix) \
    \
 prefix int ldus_rbtree_insert(struct ldus_rbtree **proot, struct ldus_rbtree *node) { \
-	struct ldus_rbtree *root = _rbtree_ptr(*proot); \
-	if (!root) { *proot = node, node->left = node->right = 0; return 1; } \
-	if (lessthan(node, root)) return _rbtree_insert_balance_left (proot, ldus_rbtree_insert(&root->left,  node)); \
-	if (lessthan(root, node)) return _rbtree_insert_balance_right(proot, ldus_rbtree_insert(&root->right, node)); \
-	return -1; \
+  struct ldus_rbtree *root = _rbtree_ptr(*proot); \
+  if (!root) { *proot = node, node->left = node->right = 0; return 1; } \
+  if (lessthan(node, root)) return _rbtree_insert_balance_left (proot, ldus_rbtree_insert(&root->left,  node)); \
+  if (lessthan(root, node)) return _rbtree_insert_balance_right(proot, ldus_rbtree_insert(&root->right, node)); \
+  return -1; \
 } \
     \
 prefix struct ldus_rbtree *ldus_rbtree_find(struct ldus_rbtree *root, struct ldus_rbtree *node) postfix { \
-	root = _rbtree_ptr(root); \
-	if (!root) return 0; \
-	if (lessthan(node, root)) return ldus_rbtree_find(root->left,  node); \
-	if (lessthan(root, node)) return ldus_rbtree_find(root->right, node); \
-	return root; \
+  root = _rbtree_ptr(root); \
+  if (!root) return 0; \
+  if (lessthan(node, root)) return ldus_rbtree_find(root->left,  node); \
+  if (lessthan(root, node)) return ldus_rbtree_find(root->right, node); \
+  return root; \
 } \
     \
 prefix int ldus_rbtree_remove(struct ldus_rbtree **proot, struct ldus_rbtree *node) { \
-	struct ldus_rbtree *root = _rbtree_ptr(*proot); \
-	if (!root) return -1; \
-	if (lessthan(node, root)) return _rbtree_remove_balance_left (proot,  ldus_rbtree_remove (&root->left,  node )); \
-	if (lessthan(root, node)) return _rbtree_remove_balance_right(proot,  ldus_rbtree_remove (&root->right, node )); \
-	if (root->left )          return _rbtree_remove_balance_left (proot, _rbtree_remove_left (&root->left,  proot)); \
-	if (root->right)          return _rbtree_remove_balance_right(proot, _rbtree_remove_right(&root->right, proot)); \
-	if (_rbtree_color(*proot)) { *proot = 0; return 0; } \
-	*proot = 0; return 1; \
+  struct ldus_rbtree *root = _rbtree_ptr(*proot); \
+  if (!root) return -1; \
+  if (lessthan(node, root)) return _rbtree_remove_balance_left (proot,  ldus_rbtree_remove (&root->left,  node )); \
+  if (lessthan(root, node)) return _rbtree_remove_balance_right(proot,  ldus_rbtree_remove (&root->right, node )); \
+  if (root->left )          return _rbtree_remove_balance_left (proot, _rbtree_remove_left (&root->left,  proot)); \
+  if (root->right)          return _rbtree_remove_balance_right(proot, _rbtree_remove_right(&root->right, proot)); \
+  if (_rbtree_color(*proot)) { *proot = 0; return 0; } \
+  *proot = 0; return 1; \
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

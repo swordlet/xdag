@@ -12,9 +12,9 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "../system.h"
-#include "../utils/log.h"
-#include "../uthash/utlist.h"
+#include "system.h"
+#include "utils/log.h"
+#include "uthash/utlist.h"
 #include "rpc_procedures.h"
 
 /*

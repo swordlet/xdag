@@ -9,8 +9,8 @@
 #ifndef XDAG_RPC_SERVICE_H
 #define XDAG_RPC_SERVICE_H
 
-#include "cJSON.h"
-#include "cJSON_Utils.h"
+#include "json-rpc/cJSON.h"
+#include "json-rpc/cJSON_Utils.h"
 #include <stdio.h>
 
 #ifdef __cplusplus

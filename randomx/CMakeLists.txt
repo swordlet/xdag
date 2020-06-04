@@ -93,7 +93,7 @@ add_library(randomx
         ${SOURCES_BACKEND_CPU})
 #target_link_libraries(${RX_LIBRARY} ${XMRIG_ASM_LIBRARY} ${OPENSSL_LIBRARIES} ${UV_LIBRARIES} ${EXTRA_LIBS} ${CPUID_LIB} ${ARGON2_LIBRARY})
 
-set(RANDOMX_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/src/crypto/randomx" CACHE STRING "randomx include path")
+set(RANDOMX_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/crypto/randomx" CACHE STRING "randomx include path")
 set(RANDOMX_LIBRARY "randomx" CACHE STRING "randomx library")
 
 if (WIN32)

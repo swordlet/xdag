@@ -146,19 +146,19 @@ extern int xdag_get_our_block(xdag_hash_t hash);
 
 // calls callback for each own block
 extern int xdag_traverse_our_blocks(void *data,
-	int (*callback)(void*, xdag_hash_t, xdag_amount_t, xtime_t, int));
+                                    int (*callback)(void *, xdag_hash_t, xdag_amount_t, xtime_t, int));
 
 // calls callback for each block
 extern int xdag_traverse_all_blocks(void *data, int (*callback)(void *data, xdag_hash_t hash,
-	xdag_amount_t amount, xtime_t time));
+                                                                xdag_amount_t amount, xtime_t time));
 
 // create a new block
-extern struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount, int outputsCount, int hasRemark, 
-	xdag_amount_t fee, xtime_t send_time, xdag_hash_t block_hash_result);
+extern struct xdag_block *xdag_create_block(struct xdag_field *fields, int inputsCount, int outputsCount, int hasRemark,
+                                            xdag_amount_t fee, xtime_t send_time, xdag_hash_t block_hash_result);
 
 // create and publish a block
-extern int xdag_create_and_send_block(struct xdag_field *fields, int inputsCount, int outputsCount, int hasRemark, 
-	xdag_amount_t fee, xtime_t send_time, xdag_hash_t block_hash_result);
+extern int xdag_create_and_send_block(struct xdag_field *fields, int inputsCount, int outputsCount, int hasRemark,
+                                      xdag_amount_t fee, xtime_t send_time, xdag_hash_t block_hash_result);
 
 // returns current balance for specified address or balance for all addresses if hash == 0
 extern xdag_amount_t xdag_get_balance(xdag_hash_t hash);
@@ -173,7 +173,7 @@ extern xdag_amount_t xdag_get_supply(uint64_t nmain);
 extern int64_t xdag_get_block_pos(xdag_hash_t hash, xtime_t *time, struct xdag_block *block);
 
 // return state info string
-extern const char* xdag_get_block_state_info(uint8_t flag);
+extern const char *xdag_get_block_state_info(uint8_t flag);
 
 // returns a number of key by hash of block or -1 if block is not ours
 extern int xdag_get_key(xdag_hash_t hash);
@@ -191,30 +191,30 @@ extern void xdag_list_main_blocks(int count, int print_only_addresses, FILE *out
 extern void xdag_list_mined_blocks(int count, int include_non_payed, FILE *out);
 
 // get all transactions of specified address, and return total number of transactions
-extern int xdag_get_transactions(xdag_hash_t hash, void *data, int (*callback)(void*, int, int, xdag_hash_t, xdag_amount_t, xtime_t, const char*));
+extern int xdag_get_transactions(xdag_hash_t hash, void *data,
+                                 int (*callback)(void *, int, int, xdag_hash_t, xdag_amount_t, xtime_t, const char *));
 
 // print orphan blocks
-void xdag_list_orphan_blocks(int, FILE*);
+void xdag_list_orphan_blocks(int, FILE *);
 
 // completes work with the blocks
 void xdag_block_finish(void);
 
 // add blocks with out sync for pool reload data
 void *add_block_callback_nosync(void *block, void *data);
-    
+
 void *add_block_callback_sync(void *block, void *data);
 
 void xdag_connect_block(struct xdag_block *b);
 
 
-	
 // get block info of specified address
-extern int xdag_get_block_info(xdag_hash_t, void *, int (*)(void*, int, xdag_hash_t, xdag_amount_t, xtime_t, uint64_t, const char*),
-							void *, int (*)(void*, const char *, xdag_hash_t, xdag_amount_t));
-
+extern int xdag_get_block_info(xdag_hash_t, void *,
+                               int (*)(void *, int, xdag_hash_t, xdag_amount_t, xtime_t, uint64_t, const char *),
+                               void *, int (*)(void *, const char *, xdag_hash_t, xdag_amount_t));
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 #endif

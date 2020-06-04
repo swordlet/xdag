@@ -19,9 +19,6 @@
 #define XDAG_ERA                g_xdag_era
 #define MAX_TIME_NMAIN_STALLED  (1 << 10)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 extern xtime_t g_xdag_era;
 
@@ -45,9 +42,7 @@ void xdag_time_to_string(time_t time, char* buf);
 extern xtime_t xdag_get_xtimestamp(void);
 
 extern uint64_t xdag_get_time_ms(void);
-	
-#ifdef __cplusplus
-};
-#endif
+
+
 
 #endif

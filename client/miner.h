@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include "block.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 extern int g_xdag_auto_swith_pool;
 
@@ -29,8 +29,8 @@ extern int xdag_send_block_via_pool(struct xdag_block *block);
 /* picks random pool from the list of pools */
 extern int xdag_pick_pool(char *pool_address);
 
-#ifdef __cplusplus
-};
-#endif
+//#ifdef __cplusplus
+//};
+//#endif
 		
 #endif

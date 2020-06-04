@@ -17,7 +17,7 @@
 #include "netdb.h"
 #include "memory.h"
 #include "crypt.h"
-#include "json-rpc/rpc_commands.h"
+#include "rpc_commands.h"
 #include "math.h"
 #ifndef _WIN32
 #include "utils/linenoise.h"
@@ -40,7 +40,7 @@ struct out_balances_data {
 
 typedef int (*xdag_com_func_t)(char*, FILE *);
 typedef struct {
-	char *name;			/* command name */
+	const char *name;			/* command name */
 	int avaibility;			/* 0 - both miner and pool, 1 - only miner, 2 - only pool */
 	xdag_com_func_t func;		/* command function */
 } XDAG_COMMAND;
@@ -661,7 +661,7 @@ void processDisconnectCommand(char *nextParam, FILE *out)
 		return;
 	}
 
-	enum disconnect_type type = 0;
+	enum disconnect_type type = DISCONNECT_INIT;
 	char *value = NULL;
 	if(strcmp(typestr, "all") == 0) {
 		type = DISCONNECT_ALL;
@@ -891,7 +891,7 @@ static int out_balances_callback(void *data, xdag_hash_t hash, xdag_amount_t amo
 	}
 	if(d->blocksCount == d->maxBlocksCount) {
 		d->maxBlocksCount = (d->maxBlocksCount ? d->maxBlocksCount * 2 : 0x100000);
-		d->blocks = realloc(d->blocks, d->maxBlocksCount * sizeof(struct xdag_field));
+		d->blocks = (struct xdag_field *)realloc(d->blocks, d->maxBlocksCount * sizeof(struct xdag_field));
 	}
 	memcpy(d->blocks + d->blocksCount, &f, sizeof(struct xdag_field));
 	d->blocksCount++;

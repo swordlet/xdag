@@ -9,8 +9,8 @@
 #ifndef XDAG_RPC_PROCEDURE_H
 #define XDAG_RPC_PROCEDURE_H
 
-#include "cJSON.h"
-#include "cJSON_Utils.h"
+#include "json-rpc/cJSON.h"
+#include "json-rpc/cJSON_Utils.h"
 #include "rpc_procedures.h"
 
 struct xdag_rpc_context{

@@ -10,6 +10,7 @@
 
 enum disconnect_type
 {
+	DISCONNECT_INIT = 0,
 	DISCONNECT_BY_ADRESS = 1,
 	DISCONNECT_BY_IP = 2,
 	DISCONNECT_ALL = 3
@@ -20,10 +21,6 @@ extern xdag_hash_t g_xdag_mined_nonce[CONFIRMATIONS_COUNT];
 extern xdag_remark_t g_pool_tag;
 extern int g_pool_has_tag;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-	
 /* initialization of the pool */
 extern int xdag_initialize_pool(const char *pool_arg);
 
@@ -46,9 +43,6 @@ extern void disconnect_connections(enum disconnect_type type, char *value);
 
 // completes global mining thread
 void xdag_pool_finish(void);
-	
-#ifdef __cplusplus
-};
-#endif
+
 
 #endif

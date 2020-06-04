@@ -30,7 +30,7 @@
 #include "math.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "../dfslib/dfslib_crypt.h"
+#include "dfslib_crypt.h"
 #include "algorithms/crc.h"
 #include "uthash/utlist.h"
 #include "uthash/uthash.h"
@@ -191,7 +191,7 @@ int xdag_initialize_pool(const char *pool_arg)
 	xdag_get_our_block(g_pool_miner.id.data);
 	g_pool_miner.state = MINER_SERVICE;
 
-	g_fds = malloc(MAX_CONNECTIONS_COUNT * sizeof(struct pollfd));
+	g_fds = (struct pollfd *)malloc(MAX_CONNECTIONS_COUNT * sizeof(struct pollfd));
 	if(!g_fds) return -1;
 
 	int err = pthread_create(&th, 0, pool_net_thread, (void*)pool_arg);
@@ -787,7 +787,7 @@ static int is_block_data_received(connection_list_element *connection)
 	struct connection_pool_data *conn_data = &connection->connection_data;
 
 	if(!conn_data->block_size && conn_data->data[0] == BLOCK_HEADER_WORD) {
-		conn_data->block = malloc(sizeof(struct xdag_block));
+		conn_data->block = (struct xdag_block *)malloc(sizeof(struct xdag_block));
 
 		if(!conn_data->block) {
 			return -1;
@@ -1392,7 +1392,7 @@ int pay_miners(xtime_t time)
 		if(!block) return -7;
 	}
 
-	double *diff = malloc(2 * miners_count * sizeof(double));
+	double *diff = (double *)malloc(2 * miners_count * sizeof(double));
 	if(!diff) return -8;
 
 	double *prev_diff = diff + miners_count;
@@ -1828,12 +1828,12 @@ void xdag_pool_finish()
 	pthread_mutex_lock(&g_pool_thread_status_mutex);
 	pthread_cancel(g_pool_main_thread);
 	pthread_cancel(g_pool_payment_thread);
-	for (enum thread_state ts = atomic_load_explicit_int(&g_pool_main_thread_status, memory_order_relaxed);
+	for (int ts = atomic_load_explicit_int(&g_pool_main_thread_status, memory_order_relaxed);
 			ts == THREAD_CANCELLABLE;
 			ts = atomic_load_explicit_int(&g_pool_main_thread_status, memory_order_relaxed)) {
 		sched_yield();
 	}
-	for (enum thread_state ts = atomic_load_explicit_int(&g_pool_payment_thread_status, memory_order_relaxed);
+	for (int ts = atomic_load_explicit_int(&g_pool_payment_thread_status, memory_order_relaxed);
 			ts == THREAD_CANCELLABLE; 
 			ts = atomic_load_explicit_int(&g_pool_payment_thread_status, memory_order_relaxed)) {
 		sched_yield();

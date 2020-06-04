@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "system.h"
-#include "../ldus/rbtree.h"
+#include "rbtree.h"
 #include "block.h"
 #include "crypt.h"
 #include "global.h"
@@ -24,9 +24,14 @@
 #include "time.h"
 #include "math.h"
 #include "utils/atomic.h"
-#include "utils/random.h"
+#include "random_utils.h"
 #include "websocket/websocket.h"
 #include "global.h"
+#include <randomx.h>
+
+static randomx_cache *g_block_rxcache= nullptr;
+static randomx_dataset *g_block_dataset = nullptr;
+static randomx_vm *g_block_rxvm = nullptr;
 
 int g_block_production_on;
 static pthread_mutex_t g_create_block_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -295,7 +300,7 @@ static void check_new_main(void)
 //    }
     struct block_internal b;
     struct block_internal pre_b;
-    xd_rsdb_op_t retcode = 1;
+    xd_rsdb_op_t retcode = XDAG_RSDB_INIT_NEW;
     struct block_internal *p = NULL;
     for(retcode = xd_rsdb_get_bi(g_top_main_chain_hash, &b), i = 0;
         !retcode && !(b.flags & BI_MAIN);
@@ -322,7 +327,7 @@ static void unwind_main(struct block_internal *bi)
 //        }
 //    }
     struct block_internal b;
-    xd_rsdb_op_t retcode = 0;
+    xd_rsdb_op_t retcode = XDAG_RSDB_OP_SUCCESS;
     for (retcode = xd_rsdb_get_bi(g_top_main_chain_hash, &b);
          !retcode && memcmp(b.hash, bi->hash, sizeof(xdag_hashlow_t));
          retcode = xd_rsdb_get_bi(b.link[b.max_diff_link], &b))
@@ -471,8 +476,8 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 	int signinmask = 0, signoutmask = 0;
 	int inmask = 0, outmask = 0, remark_index = 0;
 	int verified_keys_mask = 0, err = 0, type = 0;
-    struct block_internal tmpNodeBlock, *pt = NULL;
-    struct block_internal *nodeBlock = NULL;
+  struct block_internal tmpNodeBlock, *pt = NULL;
+  struct block_internal *nodeBlock = NULL;
 	struct block_internal blockRefs[XDAG_BLOCK_FIELDS-1];
 	char hash_str[1024] = {0};
 	xdag_diff_t diff0, diff;
@@ -724,7 +729,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 		tmpNodeBlock.storage_pos = -2l;
 	}
 
-    nodeBlock = calloc(sizeof(struct block_internal), 1);
+    nodeBlock = (struct block_internal *)calloc(sizeof(struct block_internal), 1);
     if(!nodeBlock) {
         err = 0xC;
         xdag_err("err-0xC");
@@ -1833,7 +1838,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 
     int N = 0x10000;
     int n = 0;
-    struct block_internal **ba = malloc(N * sizeof(struct block_internal *));
+    struct block_internal **ba = (struct block_internal **)malloc(N * sizeof(struct block_internal *));
     char seek_key[RSDB_KEY_LEN] = {[0] = HASH_BLOCK_BACKREF};
     size_t vlen = 0;
     size_t klen = 0;
@@ -1850,7 +1855,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
             memcpy(hash, value, sizeof(xdag_hashlow_t));
             struct block_internal b;
             if(!xd_rsdb_get_bi(hash, &b)) {
-                struct block_internal *tbi = malloc(sizeof(struct block_internal));
+                struct block_internal *tbi = (struct block_internal *)malloc(sizeof(struct block_internal));
                 memset(tbi, 0, sizeof(struct block_internal));
                 memcpy(tbi, &b, sizeof(struct block_internal));
                 ba[n++] = tbi;

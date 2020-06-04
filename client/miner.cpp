@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "system.h"
-#include "../dfslib/dfslib_crypt.h"
+#include "dfslib_crypt.h"
 #include "address.h"
 #include "block.h"
 #include "global.h"
@@ -25,7 +25,8 @@
 #include "algorithms/crc.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "utils/random.h"
+#include "random_utils.h"
+#include <randomx.h>
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -34,6 +35,9 @@
 #define POOL_LIST_FILE         (g_xdag_testnet ? "pools-testnet.txt" : "pools.txt")
 
 int g_xdag_auto_swith_pool = 0;
+static randomx_cache *g_miner_rxcache= nullptr;
+static randomx_dataset *g_miner_rxdataset = nullptr;
+static randomx_vm *g_miner_rxvm = nullptr;
 
 struct miner {
 	struct xdag_field id;
@@ -48,6 +52,10 @@ static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
 int g_xdag_mining_threads = 0;
 
 static int g_socket = -1, g_stop_mining = 1;
+
+randomx_cache *rx_cache = NULL;
+randomx_dataset *rx_dataset = NULL;
+
 
 static int can_send_share(time_t current_time, time_t task_time, time_t share_time)
 {
@@ -150,6 +158,7 @@ void *miner_net_thread(void *arg)
 	strncpy(pool_address, (const char*)arg, 49);
 	const char *mess = NULL;
 	int res = 0;
+	int64_t pos=0;
 	xtime_t t;
 	struct miner *m = &g_local_miner;
 
@@ -175,7 +184,7 @@ begin:
 		goto err;
 	}
 
-	const int64_t pos = xdag_get_block_pos(hash, &t, &b);
+	pos = xdag_get_block_pos(hash, &t, &b);
 	if (pos == -2l) {
 		;
 	} else if (pos < 0) {
@@ -404,6 +413,42 @@ int xdag_mining_start(int n_mining_threads)
 			printf("detach mining_thread failed, error : %s\n", strerror(err));
 			continue;
 		}
+	}
+
+	return 0;
+}
+
+static void *rx_mining_thread(void *arg)
+{
+	xdag_hash_t hash;
+	struct xdag_field last;
+	const int nthread = (int)(uintptr_t)arg;
+	uint64_t oldntask = 0;
+	uint64_t nonce;
+
+	while(!g_xdag_sync_on && !g_stop_mining) {
+		sleep(1);
+	}
+
+	while(!g_stop_mining) {
+		const uint64_t ntask = g_xdag_pool_task_index;
+		struct xdag_pool_task *task = &g_xdag_pool_task[ntask & 1];
+
+		if(!ntask) {
+			sleep(1);
+			continue;
+		}
+
+		if(ntask != oldntask) {
+			oldntask = ntask;
+			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
+			nonce = last.amount + nthread;
+		}
+
+		last.amount = xdag_hash_final_multi(task->ctx, &nonce, 4096, g_xdag_mining_threads, hash);
+		g_xdag_extstats.nhashes += 4096;
+		xd_rsdb_put_extstats();
+		xdag_set_min_share(task, last.data, hash);
 	}
 
 	return 0;

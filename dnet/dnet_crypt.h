@@ -5,7 +5,7 @@
 
 #include <sys/types.h>
 #include "dnet_system.h"
-#include "../dfslib/dfsrsa.h"
+#include <dfsrsa.h>
 
 #define DNET_KEY_SIZE	4096
 #define DNET_KEYLEN	((DNET_KEY_SIZE * 2) / (sizeof(dfsrsa_t) * 8))

@@ -30,10 +30,10 @@
 #if defined(_WIN32) || defined (__MACOS__) || defined (__APPLE__)
 #include "../client/utils/utils.h"
 #endif
-#include "../ldus/atomic.h"
-#include "../dfslib/dfsrsa.h"
-#include "../dfslib/dfslib_crypt.h"
-#include "../dfslib/dfslib_string.h"
+#include "../client/algorithms/atomic.h"
+#include "../client/algorithms/dfsrsa.h"
+#include "../client/algorithms/dfslib_crypt.h"
+#include "../client/algorithms/dfslib_string.h"
 #include "dnet_main.h"
 #include "dnet_crypt.h"
 #include "dnet_packet.h"

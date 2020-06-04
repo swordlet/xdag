@@ -17,9 +17,9 @@ enum xdag_transport_flags {
 struct xconnection;
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-	
 /* starts the transport system; bindto - ip:port for a socket for external connections
  * addr-port_pairs - array of pointers to strings with parameters of other host for connection (ip:port),
  * npairs - count of the strings,
@@ -35,7 +35,7 @@ extern int xdag_send_new_block(struct xdag_block *b);
  * return -1 in case of error
  */
 extern int xdag_request_blocks(xtime_t start_time, xtime_t end_time, void *data,
-									void *(*callback)(void *, void *));
+                               void *(*callback)(void *, void *));
 
 /* requests a block by hash from another host */
 extern int xdag_request_block(xdag_hash_t hash, struct xconnection *conn, int broadcast);
@@ -60,9 +60,9 @@ extern void xdag_print_transport_task_info(FILE *f);
 
 extern pthread_mutex_t g_transport_mutex;
 extern atomic_uint_least64_t g_xdag_last_received;
-	
+
 #ifdef __cplusplus
-};
+}
 #endif
 
 #endif

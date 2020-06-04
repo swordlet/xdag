@@ -8,9 +8,16 @@
 #include "block.h"
 #include "rsdb.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 enum xdag_states {
-#define xdag_state(n,s) XDAG_STATE_##n ,
+#define xdag_state(n, s) XDAG_STATE_##n ,
+
 #include "state.h"
+
 #undef xdag_state
 };
 
@@ -63,7 +70,7 @@ extern char *g_coinname, *g_progname;
 //defines if mining is disabled (pool)
 extern int g_disable_mining;
 
-extern xd_rsdb_t* g_xdag_rsdb;
+extern xd_rsdb_t *g_xdag_rsdb;
 
 extern xdag_hash_t g_top_main_chain_hash;
 extern xdag_hash_t g_pre_top_main_chain_hash;
@@ -76,8 +83,12 @@ extern enum xdag_field_type g_block_header_type;
 
 extern xdag_time_t g_apollo_fork_time;
 
-extern int is_pool(void);
-extern int is_wallet(void);
+int is_pool(void);
 
+int is_wallet(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

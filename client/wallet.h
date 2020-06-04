@@ -11,9 +11,10 @@ struct xdag_public_key {
 };
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-	
+
 /* initializes a wallet */
 extern int xdag_wallet_init(void);
 
@@ -30,7 +31,7 @@ extern struct xdag_public_key *xdag_wallet_our_keys(int *pnkeys);
 extern void xdag_wallet_finish(void);
 
 #ifdef __cplusplus
-};
+}
 #endif
-		
+
 #endif

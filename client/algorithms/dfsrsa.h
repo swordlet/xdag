@@ -2,6 +2,9 @@
 #define DFSTOOLS_DFSRSA_H_INCLUDED
 
 /* Определения функций для длинной арифметики и криптографии RSA, T8.505-T11.316; $DVS:time$ */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __DuS__
 #define DFSRSA_EXT extern "dfstools/dfsrsa.o"
@@ -16,9 +19,9 @@ typedef uint16_t	dfsrsa_t;
 typedef uint32_t	dfsrsa_long_t;
 typedef int32_t		dfsrsa_slong_t;
 #else
-typedef uint32_t	dfsrsa_t;
-typedef uint64_t	dfsrsa_long_t;
-typedef int64_t		dfsrsa_slong_t;
+typedef uint32_t dfsrsa_t;
+typedef uint64_t dfsrsa_long_t;
+typedef int64_t dfsrsa_slong_t;
 #endif
 
 // generates public and private keys of the lengh `keylen` of numbers dfsrsa_t
@@ -46,5 +49,9 @@ DFSRSA_EXT int dfsrsa_add(dfsrsa_t *sum, dfsrsa_t *add1, dfsrsa_t *add2, int len
 DFSRSA_EXT int dfsrsa_divmod(dfsrsa_t *mod, int mlen, dfsrsa_t *div, int len, dfsrsa_t *quotient);
 
 #undef DFSRSA_EXT
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

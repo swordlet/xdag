@@ -23,10 +23,10 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#include "../commands.h"
-#include "../utils/log.h"
-#include "cJSON.h"
-#include "cJSON_Utils.h"
+#include "commands.h"
+#include "utils/log.h"
+#include "json-rpc/cJSON.h"
+#include "json-rpc/cJSON_Utils.h"
 
 #ifndef _WIN32
 #define UNIX_SOCK  "unix_sock.dat"

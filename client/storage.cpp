@@ -208,7 +208,7 @@ uint64_t xdag_load_blocks(xdag_frame_t start_time, xdag_frame_t end_time, void *
 
 	s.size = s.sum = 0;
 
-	buf = malloc(bufsize*sizeof(struct xdag_block));
+	buf = (struct xdag_block *)malloc(bufsize*sizeof(struct xdag_block));
  	if(buf == NULL){
 		xdag_fatal("malloc failed [function xdag_load_blocks]");
 		return 0;

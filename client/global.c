@@ -17,5 +17,5 @@ xdag_hashlow_t g_ourfirst_hash = {0};
 xdag_hashlow_t g_ourlast_hash = {0};
 xdag_amount_t g_balance = 0;
 
-inline int is_pool(void) { return g_xdag_type == XDAG_POOL; }
-inline int is_wallet(void) { return g_xdag_type == XDAG_WALLET; }
+int is_pool(void) { return g_xdag_type == XDAG_POOL; }
+int is_wallet(void) { return g_xdag_type == XDAG_WALLET; }

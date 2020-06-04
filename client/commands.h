@@ -18,11 +18,7 @@ extern double xdagGetHashRate(void);
 extern long double hashrate(xdag_diff_t *diff);
 extern const char *get_state(void);
 
-#ifdef __cplusplus
-};
-#endif
-
-#define XFER_MAX_IN				11
+#define XFER_MAX_IN        11
 
 struct xfer_callback_data {
 	struct xdag_field fields[XFER_MAX_IN + 1];
@@ -41,8 +37,12 @@ int xdag_show_state(xdag_hash_t hash);
 
 int xfer_callback(void *data, xdag_hash_t hash, xdag_amount_t amount, xtime_t time, int n_our_key);
 
-int read_command(char* cmd);
+int read_command(char *cmd);
 
 void xdag_init_commands(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // !XDAG_COMMANDS_H

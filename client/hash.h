@@ -34,7 +34,9 @@ extern uint64_t xdag_hash_final_multi(void *ctxv, uint64_t *nonce, int attempts,
 extern void xdag_hash_get_state(void *ctxv, xdag_hash_t state);
 
 extern void xdag_hash_set_state(void *ctxv, xdag_hash_t state, size_t size);
-	
+
+extern uint64_t xdag_rx_hash(void *ctxv, uint64_t *nonce, int attempts, int step, xdag_hash_t hash);
+
 #ifdef __cplusplus
 };
 #endif

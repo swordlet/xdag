@@ -5,6 +5,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // get rid of access memory 0x0000000000000000 runtime error which will cause dnet restart.
 #define container_of(ptr, type, member) ((type *)((char *)(ptr) - (size_t)offsetof(type, member)))
 //#define container_of(ptr, type, member) ((type *)((char *)(ptr) - (size_t)&((type *)0)->member))
@@ -42,5 +46,9 @@ static inline void list_remove(struct list *node) {
 	next->prev = prev;
 	node->prev = node->next = node;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

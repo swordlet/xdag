@@ -30,9 +30,9 @@
 #include "utils/log.h"
 #include "utils/utils.h"
 #include "xdag_config.h"
-#include "json-rpc/rpc_service.h"
+#include "rpc_service.h"
 #include "../dnet/dnet_crypt.h"
-#include "utils/random.h"
+#include "random_utils.h"
 #include "websocket/websocket.h"
 #include "rsdb.h"
 
@@ -132,16 +132,16 @@ int xdag_init(int argc, char **argv, int isGui)
 	}
 
     pthread_t terminal_thread;
-    void *status = NULL;
+    void *status = nullptr;
 	if(!isGui) {
 		if(is_pool() || is_wallet() || (parameters.transport_flags & XDAG_DAEMON) > 0) {
 			xdag_mess("Starting terminal server...");
-			const int err = pthread_create(&terminal_thread, 0, &terminal_server, 0);
+			const int err = pthread_create(&terminal_thread, nullptr, &terminal_server, nullptr);
 			if(err != 0) {
 				printf("create terminal_server thread failed, error : %s\n", strerror(err));
 				return -1;
 			}
-            pthread_join(terminal_thread, status);
+      pthread_join(terminal_thread, nullptr);
 		}
 	}
 	return 0;
@@ -185,7 +185,7 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 			printUsage(argv[0]);
 			return 0;
 		} else if(ARG_EQUAL(argv[i], "-i", "")) { /* interactive mode */
-			return terminal_client(NULL);
+			return terminal_client();
 		} else if(ARG_EQUAL(argv[i], "-z", "")) { /* memory map  */
 			if(++i < argc) {
 //				xdag_mem_tempfile_path(argv[i]);

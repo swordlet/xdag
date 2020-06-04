@@ -30,9 +30,9 @@
 #endif
 #include <pthread.h>
 
-#include "../utils/log.h"
-#include "../utils/utils.h"
-#include "../system.h"
+#include "utils/log.h"
+#include "utils/utils.h"
+#include "system.h"
 #include "rpc_procedure.h"
 #include "rpc_commands.h"
 

@@ -6,7 +6,7 @@
 #include "mining_common.h"
 #include "miner.h"
 #include "pool.h"
-#include "../dfslib/dfslib_crypt.h"
+#include "dfslib_crypt.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -30,7 +30,7 @@ static int crypt_start(void)
 	uint32_t sector0[128];
 	int i;
 
-	g_crypt = malloc(sizeof(struct dfslib_crypt));
+	g_crypt = (struct dfslib_crypt *)malloc(sizeof(struct dfslib_crypt));
 	if(!g_crypt) return -1;
 	dfslib_crypt_set_password(g_crypt, dfslib_utf8_string(&str, MINERS_PWD, strlen(MINERS_PWD)));
 

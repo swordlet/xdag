@@ -114,7 +114,7 @@ void* terminal_server()
         fprintf(stderr, "pipe bind error %s\n", uv_err_name(r));
         exit(-1);
     }
-    xdag_cmd_t *xdag_cmd = malloc(sizeof(xdag_cmd_t));
+    xdag_cmd_t *xdag_cmd = (xdag_cmd_t*)malloc(sizeof(xdag_cmd_t));
     memset(xdag_cmd, 0, sizeof(xdag_cmd_t));
     xdag_cmd->type = 0;
     work.data = xdag_cmd;
@@ -153,7 +153,7 @@ static void command_work(uv_work_t* work) {
         strncpy(cmd, cmd2, strlen(cmd2));
     }
 
-    xdag_cmd_t * xdag_cmd = work->data;
+    xdag_cmd_t * xdag_cmd = (xdag_cmd_t *)work->data;
     xdag_cmd->cmd = strdup(cmd);
 
     if(xdag_cmd->type == 0) {
@@ -163,7 +163,7 @@ static void command_work(uv_work_t* work) {
 
 static void command_complete(uv_work_t* work, int status) {
     write_req_t *wri = (write_req_t *)malloc(sizeof(write_req_t));
-    xdag_cmd_t *xdag_cmd = work->data;
+    xdag_cmd_t *xdag_cmd = (xdag_cmd_t *)work->data;
     if(!xdag_cmd) return;
     char *cmd = xdag_cmd->cmd;
     if(!cmd) return;
@@ -207,7 +207,7 @@ static void on_client_connect(uv_connect_t* req, int status) {
     if(status < 0){
         fprintf(stderr, "pipe new conect error...\n");
     }
-    xdag_cmd_t *xdag_cmd = malloc(sizeof(xdag_cmd_t));
+    xdag_cmd_t *xdag_cmd = (xdag_cmd_t *)malloc(sizeof(xdag_cmd_t));
     xdag_cmd->type = 1;
     work.data = xdag_cmd;
     uv_queue_work(loop, &work, command_work, command_complete);
