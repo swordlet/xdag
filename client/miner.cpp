@@ -381,50 +381,16 @@ static void *mining_thread(void *arg)
 	return 0;
 }
 
-/* changes the number of mining threads */
-int xdag_mining_start(int n_mining_threads)
-{
-	pthread_t th;
 
-	if(n_mining_threads == g_xdag_mining_threads) {
-
-	} else if(!n_mining_threads) {
-		g_stop_mining = 1;
-		g_xdag_mining_threads = 0;
-	} else if(!g_xdag_mining_threads) {
-		g_stop_mining = 0;
-	} else if(g_xdag_mining_threads > n_mining_threads) {
-		g_stop_mining = 1;
-		sleep(5);
-		g_stop_mining = 0;
-		g_xdag_mining_threads = 0;
-	}
-
-	while(g_xdag_mining_threads < n_mining_threads) {
-		g_xdag_mining_threads++;
-		int err = pthread_create(&th, 0, mining_thread, (void*)(uintptr_t)g_xdag_mining_threads);
-		if(err != 0) {
-			printf("create mining_thread failed, error : %s\n", strerror(err));
-			continue;
-		}
-
-		err = pthread_detach(th);
-		if(err != 0) {
-			printf("detach mining_thread failed, error : %s\n", strerror(err));
-			continue;
-		}
-	}
-
-	return 0;
-}
-
-static void *rx_mining_thread(void *arg)
+void *rx_mining_thread(void *arg)
 {
 	xdag_hash_t hash;
 	struct xdag_field last;
 	const int nthread = (int)(uintptr_t)arg;
 	uint64_t oldntask = 0;
 	uint64_t nonce;
+
+	printf("start rx mining thread\n");
 
 	while(!g_xdag_sync_on && !g_stop_mining) {
 		sleep(1);
@@ -449,6 +415,49 @@ static void *rx_mining_thread(void *arg)
 		g_xdag_extstats.nhashes += 4096;
 		xd_rsdb_put_extstats();
 		xdag_set_min_share(task, last.data, hash);
+	}
+
+	return 0;
+}
+
+/* changes the number of mining threads */
+int xdag_mining_start(int n_mining_threads)
+{
+	int err=0;
+	pthread_t th;
+
+	if(n_mining_threads == g_xdag_mining_threads) {
+
+	} else if(!n_mining_threads) {
+		g_stop_mining = 1;
+		g_xdag_mining_threads = 0;
+	} else if(!g_xdag_mining_threads) {
+		g_stop_mining = 0;
+	} else if(g_xdag_mining_threads > n_mining_threads) {
+		g_stop_mining = 1;
+		sleep(5);
+		g_stop_mining = 0;
+		g_xdag_mining_threads = 0;
+	}
+
+	while(g_xdag_mining_threads < n_mining_threads) {
+		g_xdag_mining_threads++;
+		if(g_xdag_mine_type == XDAG_RAW){
+			err = pthread_create(&th, 0, mining_thread, (void*)(uintptr_t)g_xdag_mining_threads);
+		}else{
+			err = pthread_create(&th, 0, rx_mining_thread, (void*)(uintptr_t)g_xdag_mining_threads);
+		}
+
+		if(err != 0) {
+			printf("create mining_thread failed, error : %s\n", strerror(err));
+			continue;
+		}
+
+		err = pthread_detach(th);
+		if(err != 0) {
+			printf("detach mining_thread failed, error : %s\n", strerror(err));
+			continue;
+		}
 	}
 
 	return 0;

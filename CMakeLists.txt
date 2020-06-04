@@ -97,6 +97,13 @@ add_subdirectory(client/utils)
 add_subdirectory(client/websocket)
 add_subdirectory(client)
 
+add_executable(xdag
+        client/main.cpp)
+
+target_link_libraries(xdag
+        PUBLIC
+        ${XDAG_CORE_LIBRARY})
+
 #build test case
 if(BUILD_TEST)
   enable_testing()

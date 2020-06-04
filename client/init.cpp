@@ -101,6 +101,8 @@ int xdag_init(int argc, char **argv, int isGui)
 
 	g_xdag_run = 1;
 	xdag_show_state(0);
+
+	g_xdag_mine_type = XDAG_RAW;
 	
 	struct startup_parameters parameters;
 	int res = parse_startup_parameters(argc, argv, &parameters);
@@ -207,6 +209,8 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 			if(++i < argc) {
 				parameters->pool_configuration.mining_configuration = argv[i];
 			}
+		} else if(ARG_EQUAL(argv[i], "-randomx", "")){
+      g_xdag_mine_type = XDAG_RANDOMX;
 		} else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
 			g_xdag_run = 0;
 		} else if(ARG_EQUAL(argv[i], "-s", "")) { /* address of this node */
@@ -257,7 +261,7 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
                 config_path = argv[++i];
             }
             if(get_pool_config(config_path, &parameters->pool_configuration) < 0) return -1;
-        } else {
+    } else {
 			printUsage(argv[0]);
 			return 0;
 		}
