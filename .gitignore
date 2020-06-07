@@ -15,6 +15,7 @@ cmake-build-release/
 /win/ipch
 /win/xdagwallet/xdagwallet.aps
 /win/xdaglib/xdaglib.vcxproj.user
+randomx/vcxproj
 
 #mac project
 xcuserdata
