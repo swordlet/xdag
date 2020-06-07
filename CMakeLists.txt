@@ -98,7 +98,7 @@ add_subdirectory(client/websocket)
 add_subdirectory(client)
 
 add_executable(xdag
-        client/main.cpp)
+        client/main.c)
 
 target_link_libraries(xdag
         PUBLIC

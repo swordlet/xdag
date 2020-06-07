@@ -3,17 +3,19 @@
 #include <string.h>
 #ifdef SHA256_OPENSSL_MBLOCK
 #include <arpa/inet.h>
+
 #endif
 #include "algorithms/sha256.h"
 #include "hash.h"
 #include "system.h"
+#include "block.h"
 
 void xdag_hash(void *data, size_t size, xdag_hash_t hash)
 {
 	SHA256REF_CTX ctx;
 
 	sha256_init(&ctx);
-	sha256_update(&ctx, data, size);
+	sha256_update(&ctx,(const uint8_t *)data, size);
 	sha256_final(&ctx, (uint8_t*)hash);
 	sha256_init(&ctx);
 	sha256_update(&ctx, (uint8_t*)hash, sizeof(xdag_hash_t));
@@ -36,7 +38,7 @@ void xdag_hash_update(void *ctxv, void *data, size_t size)
 {
 	SHA256REF_CTX *ctx = (SHA256REF_CTX*)ctxv;
 
-	sha256_update(ctx, data, size);
+	sha256_update(ctx, (const uint8_t *)data, size);
 }
 
 void xdag_hash_final(void *ctxv, void *data, size_t size, xdag_hash_t hash)
@@ -48,6 +50,15 @@ void xdag_hash_final(void *ctxv, void *data, size_t size, xdag_hash_t hash)
 	sha256_final(&ctx, (uint8_t*)hash);
 	sha256_init(&ctx);
 	sha256_update(&ctx, (uint8_t*)hash, sizeof(xdag_hash_t));
+	sha256_final(&ctx, (uint8_t*)hash);
+}
+
+//calculate sha256 hash for rx mining
+void xdag_rx_pre_hash(void *data, size_t size, xdag_hash_t hash)
+{
+	SHA256REF_CTX ctx;
+	sha256_init(&ctx);
+	sha256_update(&ctx, (uint8_t*)data, size);
 	sha256_final(&ctx, (uint8_t*)hash);
 }
 
@@ -174,62 +185,6 @@ uint64_t xdag_hash_final_multi(void *ctxv, uint64_t *nonce, int attempts, int st
 			hash032[5] = htonl(mctx.F[i]);
 			hash032[6] = htonl(mctx.G[i]);
 			hash032[7] = htonl(mctx.H[i]);
-			if ((!i && !j) || xdag_cmphash(hash0, hash) < 0) {
-				memcpy(hash, hash0, sizeof(xdag_hash_t));
-				min_nonce = nonce0;
-			}
-		}
-	}
-	return min_nonce;
-}
-
-uint64_t xdag_rx_hash(void *ctxv, uint64_t *nonce, int attempts, int step, xdag_hash_t hash)
-{
-	SHA256_MB_CTX mctx1, mctx;
-	SHA256REF_CTX *ctx1 = (SHA256REF_CTX*)ctxv, ctx2[1];
-	HASH_DESC desc1[N], desc2[N];
-	uint64_t arr1[N * 16], arr2[N * 8];
-	uint8_t *array1 = (uint8_t*)arr1, *array2 = (uint8_t*)arr2;
-	xdag_hash_t hash0;
-	uint64_t min_nonce = 0, nonce0;
-	int i, j;
-
-	memset(array1, 0, 128);
-	memcpy(array1, ctx1->data, 56);
-	array1[64] = 0x80;
-	array1[126] = 0x10;
-
-	for (i = 1; i < N; ++i) {
-		memcpy(array1 + i * 128, array1, 128);
-	}
-
-	for (i = 0; i < N; ++i) {
-		desc1[i].ptr = array1 + i * 128, desc1[i].blocks = 2;
-	}
-
-	memset(array2, 0, 64);
-	array2[32] = 0x80;
-	array2[62] = 1;
-
-	for (i = 1; i < N; ++i) {
-		memcpy(array2 + i * 64, array2, 64);
-	}
-
-	for (i = 0; i < N; ++i) {
-		desc2[i].ptr = array2 + i * 64, desc2[i].blocks = 1;
-	}
-
-	for (j = 0; j < attempts; j += N) {
-		memcpy(&mctx, &mctx1, 8 * 8 * 4);
-		nonce0 = *nonce;
-
-		//change the nonce in steps
-		for (i = 0; i < N; ++i) {
-			memcpy(array1 + i * 128 + 56, nonce, 8); *nonce += step;
-		}
-
-
-		for (i = 0; i < N; ++i, nonce0 += step) {
 			if ((!i && !j) || xdag_cmphash(hash0, hash) < 0) {
 				memcpy(hash, hash0, sizeof(xdag_hash_t));
 				min_nonce = nonce0;
