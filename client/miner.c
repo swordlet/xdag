@@ -27,7 +27,7 @@
 #include "utils/utils.h"
 #include "random_utils.h"
 #include <randomx.h>
-#include "rx_hash.h"
+#include "rx_mine_hash.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -52,7 +52,7 @@ int g_xdag_mining_threads = 0;
 static int g_socket = -1, g_stop_mining = 1;
 
 randomx_cache *rx_cache = NULL;
-randomx_dataset *rx_dataset = NULL;
+randomx_dataset *rx_mine_dataset = NULL;
 
 
 static int can_send_share(time_t current_time, time_t task_time, time_t share_time)
@@ -424,13 +424,6 @@ void *rx_miner_net_thread(void *arg)
 	}
 	pthread_mutex_unlock(&g_miner_mutex);
 
-	//TODO:use key from pool task
-	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-	xdag_hash_t fixed_key_hash;
-	xdag_address2hash(fixed_key,fixed_key_hash);
-	xdag_rx_init(fixed_key_hash);
-	xdag_rx_final_hash_init(fixed_key_hash);
-
 	for(;;) {
 		struct pollfd p;
 
@@ -497,8 +490,11 @@ void *rx_miner_net_thread(void *arg)
 					GetRandBytes(task->nonce.data, sizeof(xdag_hash_t));
 					memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
 					memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
-					xdag_rx_hash_final(task->task[0].data,&task->lastfield,&task->lastfield.amount,task->minhash.data);
-					xdag_info("xdag hash final minhash data %016llx%016llx%016llx%016llx",
+
+					xdag_rx_mine_first_hash(task->task[1].data,sizeof(task->task[1].data),
+							task->task[0].data,&task->lastfield,&task->lastfield.amount,task->minhash.data);
+
+					xdag_info("task minhash first %016llx%016llx%016llx%016llx",
 					          task->minhash.data[0],task->minhash.data[1],task->minhash.data[2],task->minhash.data[3]);
 					g_xdag_pool_task_index = task_index;
 					task_time = time(0);
@@ -580,6 +576,7 @@ static void *mining_thread(void *arg)
 			oldntask = ntask;
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
 			nonce = last.amount + nthread;
+			xdag_info("mining thread %lu start nonce %016llx",pthread_self(),nonce);
 		}
 
 		last.amount = xdag_hash_final_multi(task->ctx, &nonce, 4096, g_xdag_mining_threads, hash);
@@ -590,7 +587,6 @@ static void *mining_thread(void *arg)
 
 	return 0;
 }
-
 
 void *rx_mining_thread(void *arg)
 {
@@ -618,9 +614,9 @@ void *rx_mining_thread(void *arg)
 		if(ntask != oldntask) {
 			oldntask = ntask;
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
-			nonce = last.amount + nthread;
+			nonce = last.amount;
 		}
-		last.amount = xdag_rx_mine_slow_hash(task->task[0].data, &last, &nonce, 1024, g_xdag_mining_threads, hash);
+		last.amount = xdag_rx_mine_slow_hash((uint32_t)(nthread-1),task->task[0].data, &last, &nonce, 1024,hash);
 
 		g_xdag_extstats.nhashes += 1024;
 		xd_rsdb_put_extstats();
@@ -648,6 +644,15 @@ int xdag_mining_start(int n_mining_threads)
 		sleep(5);
 		g_stop_mining = 0;
 		g_xdag_mining_threads = 0;
+	}
+
+	if(g_xdag_mine_type == XDAG_RANDOMX){
+		//TODO:use key from pool task
+		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
+		xdag_hash_t fixed_key_hash;
+		xdag_address2hash(fixed_key,fixed_key_hash);
+		rx_mine_init_seed(fixed_key_hash, sizeof(fixed_key_hash),n_mining_threads);
+		rx_mine_alloc_vms(n_mining_threads);
 	}
 
 	while(g_xdag_mining_threads < n_mining_threads) {

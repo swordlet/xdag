@@ -36,10 +36,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <atomic>
 #include "stopwatch.hpp"
 #include "utility.hpp"
-#include "../randomx.h"
-#include "../dataset.hpp"
-#include "../blake2/endian.h"
-#include "../common.hpp"
+#include <randomx.h>
+#include <dataset.hpp>
+#include <blake2/endian.h>
+#include <common.hpp>
 #ifdef _WIN32
 #include <windows.h>
 #include <VersionHelpers.h>
@@ -296,8 +296,10 @@ int main(int argc, char** argv) {
 				}
 			}
 			else {
+				std::cout << "rx dataset initialize  with single thread" << std::endl;
 				randomx_init_dataset(dataset, cache, 0, datasetItemCount);
 			}
+			std::cout << "rx dataset initialized release the cache" << std::endl;
 			randomx_release_cache(cache);
 			cache = nullptr;
 			threads.clear();
@@ -305,6 +307,7 @@ int main(int argc, char** argv) {
 		std::cout << "Memory initialized in " << sw.getElapsed() << " s" << std::endl;
 		std::cout << "Initializing " << threadCount << " virtual machine(s) ..." << std::endl;
 		for (int i = 0; i < threadCount; ++i) {
+			std::cout << "rx create vm with cache " << cache << std::endl;
 			randomx_vm *vm = randomx_create_vm(flags, cache, dataset);
 			if (vm == nullptr) {
 				if ((flags & RANDOMX_FLAG_HARD_AES)) {

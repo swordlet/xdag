@@ -1,4 +1,4 @@
-#include "../randomx.h"
+#include <randomx.h>
 #include <iostream>
 #include <iomanip>
 #include <thread>

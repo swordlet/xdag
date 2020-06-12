@@ -27,12 +27,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "utility.hpp"
-#include "../common.hpp"
-#include "../assembly_generator_x86.hpp"
-#include "../superscalar.hpp"
-#include "../aes_hash.hpp"
-#include "../blake2/blake2.h"
-#include "../program.hpp"
+#include <common.hpp>
+#include <assembly_generator_x86.hpp>
+#include <superscalar.hpp>
+#include <aes_hash.hpp>
+#include <blake2/blake2.h>
+#include <program.hpp>
 
 const uint8_t seed[32] = { 191, 182, 222, 175, 249, 89, 134, 104, 241, 68, 191, 62, 162, 166, 61, 64, 123, 191, 227, 193, 118, 60, 188, 53, 223, 133, 175, 24, 123, 230, 55, 74 };
 

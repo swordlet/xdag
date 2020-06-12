@@ -36,7 +36,8 @@
 #include "uthash/uthash.h"
 #include "utils/atomic.h"
 #include "time.h"
-#include "rx_hash.h"
+#include "rx_mine_hash.h"
+#include "rx_pool_hash.h"
 
 //TODO: why do we need these two definitions?
 #define START_MINERS_COUNT     256
@@ -138,8 +139,11 @@ struct payment_data {
 
 xdag_hash_t g_xdag_mined_hashes[CONFIRMATIONS_COUNT];
 xdag_hash_t g_xdag_mined_nonce[CONFIRMATIONS_COUNT];
+xdag_hash_t g_fixed_rx_seed;
 xdag_remark_t g_pool_tag = {0};
 int g_pool_has_tag = 0;
+
+
 
 static uint32_t g_max_connections_count = START_MINERS_COUNT, g_max_miner_ip_count = START_MINERS_IP_COUNT;
 static uint32_t g_connections_per_miner_limit = DEFAUL_CONNECTIONS_PER_MINER_LIMIT;
@@ -186,19 +190,19 @@ int xdag_initialize_pool(const char *pool_arg)
 {
 	pthread_t th;
 
+	if(g_xdag_mine_type == XDAG_RANDOMX){
+		//TODO:use key base on rx seed height
+		xdag_mess("Pool init randomx paramters");
+		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
+		xdag_address2hash(fixed_key,g_fixed_rx_seed);
+		rx_pool_init_seed(g_fixed_rx_seed,sizeof(g_fixed_rx_seed));
+	}
+
 	memset(&g_pool_miner, 0, sizeof(struct miner_pool_data));
 	memset(&g_fund_miner, 0, sizeof(struct miner_pool_data));
 
 	xdag_get_our_block(g_pool_miner.id.data);
 	g_pool_miner.state = MINER_SERVICE;
-
-	if(g_xdag_mine_type == XDAG_RANDOMX){
-		//TODO:use key from pool task
-		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-		xdag_hash_t fixed_key_hash;
-		xdag_address2hash(fixed_key,fixed_key_hash);
-		xdag_rx_final_hash_init(fixed_key_hash);
-	}
 
 	g_fds = (struct pollfd *)malloc(MAX_CONNECTIONS_COUNT * sizeof(struct pollfd));
 	if(!g_fds) return -1;
@@ -894,7 +898,8 @@ static int process_received_share(connection_list_element *connection)
 			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
 			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));
-			xdag_rx_calculate_final_hash(rx_task_data, sizeof(rx_task_data), hash);
+
+			rx_pool_calc_hash(g_fixed_rx_seed,sizeof(g_fixed_rx_seed),rx_task_data, sizeof(rx_task_data), hash);
 			uint64_t *d=(uint64_t*)conn_data->data;
 			xdag_info("get rx task pre hash %llu%llu%llu%llu from miner",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
 			xdag_info("get last field data %llu%llu%llu%llu from miner",d[0],d[1],d[2],d[3]);

@@ -5,16 +5,16 @@
 #include <cassert>
 #include <iomanip>
 #include "utility.hpp"
-#include "../bytecode_machine.hpp"
-#include "../dataset.hpp"
-#include "../blake2/endian.h"
-#include "../blake2/blake2.h"
-#include "../blake2_generator.hpp"
-#include "../superscalar.hpp"
-#include "../reciprocal.h"
-#include "../intrin_portable.h"
-#include "../jit_compiler.hpp"
-#include "../aes_hash.hpp"
+#include <bytecode_machine.hpp>
+#include <dataset.hpp>
+#include <blake2/endian.h>
+#include <blake2/blake2.h>
+#include <blake2_generator.hpp>
+#include <superscalar.hpp>
+#include <reciprocal.h>
+#include <intrin_portable.h>
+#include <jit_compiler.hpp>
+#include <aes_hash.hpp>
 
 randomx_cache* cache;
 randomx_vm* vm = nullptr;

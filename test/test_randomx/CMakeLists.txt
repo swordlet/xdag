@@ -1,70 +1,100 @@
-set(test_randomx_sources
-        test_randomx.cpp
-        ${SOURCES_OS})
+add_executable(api-example2
+        api-example2.cpp)
 
-set(test_randomx_headers)
-
-add_executable(test_randomx
-        ${test_randomx_sources}
-        ${test_randomx_headers})
-
-
-
-
-
-#if (XMRIG_OS_WIN)
-#    list(APPEND SOURCES_OS
-#            res/app.rc
-#            src/crypto/common/VirtualMemory_win.cpp
-#            )
-#
-#    set(EXTRA_LIBS ws2_32 psapi iphlpapi userenv)
-#elseif (XMRIG_OS_APPLE)
-#    list(APPEND SOURCES_OS
-#            src/crypto/common/VirtualMemory_unix.cpp
-#            )
-#else()
-#    list(APPEND SOURCES_OS
-#            src/crypto/common/VirtualMemory_unix.cpp
-#            )
-#
-#    if (XMRIG_OS_ANDROID)
-#        set(EXTRA_LIBS pthread rt dl log)
-#    elseif (XMRIG_OS_LINUX)
-#        list(APPEND SOURCES_OS
-#                src/crypto/common/LinuxMemory.h
-#                src/crypto/common/LinuxMemory.cpp
-#                )
-#
-#        set(EXTRA_LIBS pthread rt dl)
-#    elseif (XMRIG_OS_FREEBSD)
-#        set(EXTRA_LIBS kvm pthread)
-#    endif()
-#endif()
-
-include_directories(test_core
+include_directories(api-example2
         ${GTEST_INCLUDE_DIR}
-        ../../randomx/src/crypto/randomx
-        ../../randomx/src/crypto/common
         ${RANDOMX_INCLUDE_DIR})
 
-target_link_libraries(test_randomx
+target_link_libraries(api-example2
         PRIVATE
         ${GTEST_LIBRARY}
         ${RANDOMX_LIBRARY})
 
-set_property(TARGET test_randomx
-        PROPERTY
-        FOLDER "test")
+add_executable(randomx-tests
+  tests.cpp)
 
-add_test(NAME   test_randomx
-        COMMAND test_randomx)
+include_directories(randomx-tests
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(randomx-tests
+    PRIVATE
+    ${GTEST_LIBRARY}
+    ${RANDOMX_LIBRARY})
+
+add_executable(randomx-codegen
+  code-generator.cpp)
+
+include_directories(randomx-codegen
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(randomx-codegen
+    PRIVATE
+    ${GTEST_LIBRARY}
+    ${RANDOMX_LIBRARY})
+
+add_executable(randomx-benchmark
+    benchmark.cpp
+    affinity.cpp)
+
+include_directories(randomx-benchmark
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(randomx-benchmark
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(dynamic-seed
+        dynamic-seed.cpp)
+
+include_directories(dynamic-seed
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(dynamic-seed
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(test_rx_seedheight
+        test_rx_seedheight.cpp)
+
+include_directories(test_rx_seedheight
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(test_rx_seedheight
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
 
 if(RUN_TEST)
+    #run randomx-test after build
     add_custom_target(test_randomx_all
-            ALL DEPENDS test_randomx)
+            ALL DEPENDS randomx-tests)
 
-    add_custom_command(TARGET test_randomx_all
+    add_custom_command(TARGET randomx-tests
             POST_BUILD
-            COMMAND           test_randomx)
+            COMMAND randomx-tests)
+
+    add_custom_command(TARGET randomx-codegen
+            POST_BUILD
+            COMMAND randomx-codegen)
+
+    add_custom_command(TARGET test_rx_seedheight
+            POST_BUILD
+            COMMAND test_rx_seedheight)
+
+    add_custom_target(benchmark_randomx_all
+            ALL DEPENDS randomx-benchmark)
+
+    add_custom_command(TARGET randomx-benchmark
+            POST_BUILD
+            COMMAND randomx-benchmark --mine --jit --threads 4 --auto)
 endif()
