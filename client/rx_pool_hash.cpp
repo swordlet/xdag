@@ -42,7 +42,7 @@ void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next
 
 static void * init_pool_dataset_thread(void *arg) {
 	miner_seedinfo *si = (miner_seedinfo*)arg;
-	xdag_info("init dataset with thread %lu",pthread_self());
+	xdag_info("init pool dataset with thread %lu start %lu count %lu",pthread_self(), si->si_start,si->si_count);
 	randomx_init_dataset(g_rx_pool_dataset, si->si_cache, si->si_start, si->si_count);
 	return NULL;
 }
@@ -73,6 +73,8 @@ static void rx_pool_init_dataset(randomx_cache *rs_cache, const int thread_count
 		uint32_t item_count_per = item_count / thread_count;
 		uint32_t item_count_remain = item_count % thread_count;
 
+		xdag_info("pool init dataset count %u per %u remain %u",item_count,item_count_per,item_count_remain);
+
 		//给每个线程分配itemcount，最后一个线程使用剩余的所有的itemcount
 		for (i=0; i < thread_count; i++) {
 			auto count = item_count_per + (i == thread_count - 1 ? item_count_remain : 0);
@@ -84,12 +86,12 @@ static void rx_pool_init_dataset(randomx_cache *rs_cache, const int thread_count
 
 		xdag_info("init dataset for pool with %d thread",thread_count);
 		// 开启多线程，每个线程都初始化自己的dataset
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_create(&st[i],NULL, init_pool_dataset_thread, &si[i]);
 		}
 
 		// 等待线程初始化的结束
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_join(st[i],NULL);
 		}
 		free(st);
@@ -108,15 +110,18 @@ int rx_pool_init_seed(void *seed_data, size_t seed_size)
 	if(memcmp(seed_data,g_current_pool_seed,sizeof(g_current_pool_seed))){
 		xdag_info("pool seed changed reinit pool rx paramters");
 		memcpy(g_current_pool_seed,seed_data,sizeof(g_current_pool_seed));
+		xdag_info("pool seed reinited %016llx%016llx%016llx%016llx not changed",
+		          g_current_pool_seed[0],g_current_pool_seed[1],g_current_pool_seed[2],g_current_pool_seed[3]);
 		toggled = true;
 	} else{
-		xdag_info("pool seed not changed");
+		xdag_info("pool seed %016llx%016llx%016llx%016llx not changed",
+		          g_current_pool_seed[0],g_current_pool_seed[1],g_current_pool_seed[2],g_current_pool_seed[3]);
 		pthread_mutex_unlock(&g_rx_init_mutex);
 		return 0;
 	}
 
 	if(toggled){
-		g_pool_flags=RANDOMX_FLAG_DEFAULT;
+		//g_pool_flags=RANDOMX_FLAG_DEFAULT;
 		if(g_rx_pool_vm){
 			randomx_destroy_vm(g_rx_pool_vm);
 			g_rx_pool_vm=NULL;
@@ -144,7 +149,7 @@ int rx_pool_init_seed(void *seed_data, size_t seed_size)
 #endif
 
 		// 矿池暂时不需要full memory
-		g_pool_flags |= RANDOMX_FLAG_FULL_MEM;
+		//g_pool_flags |= RANDOMX_FLAG_FULL_MEM;
 
 		// printf randomx flags info
 		if (g_pool_flags & RANDOMX_FLAG_ARGON2_AVX2) {
@@ -216,7 +221,7 @@ int rx_pool_init_seed(void *seed_data, size_t seed_size)
 			pthread_mutex_unlock(&g_rx_init_mutex);
 			return -1;
 		}
-		randomx_init_cache(g_rx_pool_cache, seed_data, seed_size);
+		randomx_init_cache(g_rx_pool_cache, g_current_pool_seed, sizeof(g_current_pool_seed));
 	}
 
 	xdag_info("alloc pool hash dataset ...");

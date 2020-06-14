@@ -28,6 +28,8 @@ extern void rx_mine_free();
 
 extern int rx_mine_calc_first_hash(void *seed_data, size_t seed_size,void* data,size_t data_size,void* output_hash);
 
+extern uint64_t* get_current_rx_seed();
+
 #ifdef __cplusplus
 }
 #endif

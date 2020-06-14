@@ -90,13 +90,14 @@ static inline int enabled_flags(void) {
 
 static void * rx_seedthread(void *arg) {
 	miner_seedinfo *si = (miner_seedinfo*)arg;
+	xdag_info("init mine dataset with thread %lu start %lu count %lu",pthread_self(), si->si_start,si->si_count);
 	randomx_init_dataset(g_rx_mine_dataset, si->si_cache, si->si_start, si->si_count);
 	return NULL;
 }
 
 static void * init_first_dataset_thread(void *arg) {
 	miner_seedinfo *si = (miner_seedinfo*)arg;
-	xdag_info("init dataset with thread %lu",pthread_self());
+	xdag_info("init first dataset with thread %lu start %lu count %lu",pthread_self(), si->si_start,si->si_count);
 	randomx_init_dataset(g_rx_first_hash_dataset, si->si_cache, si->si_start, si->si_count);
 	return NULL;
 }
@@ -128,7 +129,9 @@ static void rx_mine_init_dataset(randomx_cache *rs_cache, const int thread_count
 		uint32_t item_count_per = item_count / thread_count;
 		uint32_t item_count_remain = item_count % thread_count;
 
-		//给每个线程分配itemcount，最后一个线程使用剩余的所有的itemcount
+		xdag_info("miner init dataset count %u per %u remain %u",item_count,item_count_per,item_count_remain);
+
+		// 给每个线程分配itemcount，最后一个线程使用剩余的所有的itemcount
 		for (i=0; i < thread_count; i++) {
 			auto count = item_count_per + (i == thread_count - 1 ? item_count_remain : 0);
 			si[i].si_cache = rs_cache;
@@ -138,12 +141,12 @@ static void rx_mine_init_dataset(randomx_cache *rs_cache, const int thread_count
 		}
 
 		// 开启多线程，每个线程都初始化自己的dataset
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_create(&st[i],NULL, rx_seedthread, &si[i]);
 		}
 
 		// 等待线程初始化的结束
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_join(st[i],NULL);
 		}
 		free(st);
@@ -181,7 +184,7 @@ static void rx_first_init_dataset(randomx_cache *rs_cache, const int thread_coun
 		uint32_t item_count_per = item_count / thread_count;
 		uint32_t item_count_remain = item_count % thread_count;
 
-		//给每个线程分配itemcount，最后一个线程使用剩余的所有的itemcount
+		// 给每个线程分配itemcount，最后一个线程使用剩余的所有的itemcount
 		for (i=0; i < thread_count; i++) {
 			auto count = item_count_per + (i == thread_count - 1 ? item_count_remain : 0);
 			si[i].si_cache = rs_cache;
@@ -192,12 +195,12 @@ static void rx_first_init_dataset(randomx_cache *rs_cache, const int thread_coun
 
 		xdag_info("init dataset for first hash with %d thread",thread_count);
 		// 开启多线程，每个线程都初始化自己的dataset
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_create(&st[i],NULL, init_first_dataset_thread, &si[i]);
 		}
 
 		// 等待线程初始化的结束
-		for (i=1; i < thread_count; i++) {
+		for (i=0; i < thread_count; i++) {
 			pthread_join(st[i],NULL);
 		}
 		free(st);
@@ -223,7 +226,6 @@ int rx_mine_init_first_seed(void* seed_data,size_t seed_size){
 	}
 
 	if(toggled){
-		g_rx_first_hash_flags=RANDOMX_FLAG_DEFAULT;
 		if(g_rx_first_hash_vm){
 			randomx_destroy_vm(g_rx_first_hash_vm);
 			g_rx_first_hash_vm=NULL;
@@ -243,57 +245,57 @@ int rx_mine_init_first_seed(void* seed_data,size_t seed_size){
 
 		// printf randomx flags info
 		if (g_rx_first_hash_flags & RANDOMX_FLAG_ARGON2_AVX2) {
-			printf(" - Argon2 implementation: AVX2\n");
+			xdag_info(" - first hash Argon2 implementation: AVX2");
 		}
 		else if (g_rx_first_hash_flags & RANDOMX_FLAG_ARGON2_SSSE3) {
-			printf(" - Argon2 implementation: SSSE3\n");
+			xdag_info(" - first hash Argon2 implementation: SSSE3");
 		}
 		else {
-			printf(" - Argon2 implementation: reference\n");
+			xdag_info(" - Argon2 implementation: reference");
 		}
 
 		if (g_rx_first_hash_flags & RANDOMX_FLAG_FULL_MEM) {
-			printf(" - full memory mode (2080 MiB)\n");
+			xdag_info(" - first hash full memory mode (2080 MiB)");
 		}
 		else {
-			printf(" - light memory mode (256 MiB)\n");
+			xdag_info(" - first hash light memory mode (256 MiB)");
 		}
 
 		if (g_rx_first_hash_flags & RANDOMX_FLAG_JIT) {
-			printf(" - JIT compiled mode \n");
+			xdag_info(" - first hash JIT compiled mode");
 			if (g_rx_first_hash_flags & RANDOMX_FLAG_SECURE) {
-				printf("(secure)\n");
+				xdag_info("(first hash secure)");
 			}
 		}
 		else {
-			printf(" - interpreted mode\n");
+			xdag_info(" - first hash interpreted mode");
 		}
 
 		if (g_rx_first_hash_flags & RANDOMX_FLAG_HARD_AES) {
-			printf(" - hardware AES mode\n");
+			xdag_info(" - first hash hardware AES mode");
 		}
 		else {
-			printf(" - software AES mode\n");
+			xdag_info(" - first hash software AES mode");
 		}
 
 		if (g_rx_first_hash_flags & RANDOMX_FLAG_LARGE_PAGES) {
-			printf(" - large pages mode\n");
+			xdag_info(" - first hash large pages mode");
 		}
 		else {
-			printf(" - small pages mode\n");
+			xdag_info(" - first hash small pages mode");
 		}
 
-		printf("Initializing Pool\n");
+		xdag_info("initializing rx first hash");
 	}
 
 	if (randomx::selectArgonImpl(g_rx_first_hash_flags) == NULL) {
-		printf("Unsupported Argon2 implementation\n");
+		xdag_info("first hash unsupported Argon2 implementation\n");
 		pthread_mutex_unlock(&g_rx_first_seed_mutex);
 		return -1;
 	}
 
 	if ((g_rx_first_hash_flags & RANDOMX_FLAG_JIT) && !RANDOMX_HAVE_COMPILER) {
-		printf("JIT compilation is not supported on this platform. Try without --jit\n");
+		xdag_info("first hash JIT compilation is not supported on this platform. Try without --jit\n");
 		pthread_mutex_unlock(&g_rx_first_seed_mutex);
 		return -1;
 	}
@@ -303,7 +305,7 @@ int rx_mine_init_first_seed(void* seed_data,size_t seed_size){
 		g_rx_first_hash_flags |= RANDOMX_FLAG_JIT;
 	}
 
-	xdag_info("alloc cache for first hash");
+	xdag_info("first hash alloc cache for first hash");
 	if(g_rx_first_hash_cache == NULL){
 		g_rx_first_hash_cache = randomx_alloc_cache(g_rx_first_hash_flags);
 		if (g_rx_first_hash_cache == NULL) {
@@ -314,7 +316,7 @@ int rx_mine_init_first_seed(void* seed_data,size_t seed_size){
 		randomx_init_cache(g_rx_first_hash_cache, seed_data, seed_size);
 	}
 
-	xdag_info("alloc dataset for first hash");
+	xdag_info("first hash alloc dataset for first hash");
 	if(g_rx_first_hash_dataset == NULL){
 		g_rx_first_hash_dataset = randomx_alloc_dataset(g_rx_first_hash_flags);
 		if (g_rx_first_hash_dataset == NULL) {
@@ -329,17 +331,17 @@ int rx_mine_init_first_seed(void* seed_data,size_t seed_size){
 		//g_rx_first_hash_cache = NULL;
 	}
 
-	xdag_info("alloc vm for first hash");
+	xdag_info("first hash alloc vm for first hash");
 	if(g_rx_first_hash_vm == NULL){
 		g_rx_first_hash_vm = randomx_create_vm(g_rx_first_hash_flags, g_rx_first_hash_cache, g_rx_first_hash_dataset);
 		if (g_rx_first_hash_vm == NULL) {
-			xdag_fatal("fatal error can not create vm \n");
+			xdag_fatal("first hash fatal error can not create vm \n");
 			pthread_mutex_unlock(&g_rx_first_seed_mutex);
 			return -1;
 		}
 	}
 	pthread_mutex_unlock(&g_rx_first_seed_mutex);
-	xdag_info("alloc vm for first hash finished");
+	xdag_info("first hash alloc vm for first hash finished");
 	return 0;
 }
 
@@ -371,66 +373,65 @@ int rx_mine_init_seed(void *seed_data, size_t seed_size,uint32_t init_thread_cou
 
 	// printf randomx flags info
 	if (g_mine_flags & RANDOMX_FLAG_ARGON2_AVX2) {
-		printf(" - Argon2 implementation: AVX2\n");
+		xdag_info(" - rx mine Argon2 implementation: AVX2");
 	}
 	else if (g_mine_flags & RANDOMX_FLAG_ARGON2_SSSE3) {
-		printf(" - Argon2 implementation: SSSE3\n");
+		xdag_info(" - rx mine Argon2 implementation: SSSE3");
 	}
 	else {
-		printf(" - Argon2 implementation: reference");
+		xdag_info(" - rx mine Argon2 implementation: reference");
 	}
 
 	if (g_mine_flags & RANDOMX_FLAG_FULL_MEM) {
-		printf(" - full memory mode (2080 MiB)\n");
+		xdag_info(" - rx mine full memory mode (2080 MiB)");
 	}
 	else {
-		printf(" - light memory mode (256 MiB)\n");
+		xdag_info(" - rx mine light memory mode (256 MiB)");
 	}
 
 	if (g_mine_flags & RANDOMX_FLAG_JIT) {
-		printf(" - JIT compiled mode \n");
+		xdag_info(" - JIT compiled mode");
 		if (g_mine_flags & RANDOMX_FLAG_SECURE) {
-			printf("(secure)\n");
+			xdag_info("(rx mine secure)");
 		}
 	}
 	else {
-		printf(" - interpreted mode\n");
+		xdag_info(" - rx mine interpreted mode");
 	}
 
 	if (g_mine_flags & RANDOMX_FLAG_HARD_AES) {
-		printf(" - hardware AES mode\n");
+		xdag_info(" - rx mine hardware AES mode");
 	}
 	else {
-		printf(" - software AES mode\n");
+		xdag_info(" - rx mine software AES mode");
 	}
 
 	if (g_mine_flags & RANDOMX_FLAG_LARGE_PAGES) {
-		printf(" - large pages mode\n");
+		xdag_info(" - rx mine large pages mode");
 	}
 	else {
-		std::cout << " - small pages mode" << std::endl;
+		std::cout << " - rx mine small pages mode" << std::endl;
 	}
 
-	std::cout << "Initializing";
+	std::cout << "Initializing rx mine ";
 	std::cout << " (" << init_thread_count << " thread" << (init_thread_count > 1 ? "s)" : ")");
 	std::cout << " ..." << std::endl;
 
 	if (randomx::selectArgonImpl(g_mine_flags)==NULL) {
-		rx_abort("Unsupported Argon2 implementation");
+		rx_abort("rx mine Unsupported Argon2 implementation");
 		return -1;
 	}
 	if ((g_mine_flags & RANDOMX_FLAG_JIT) && !RANDOMX_HAVE_COMPILER) {
-		rx_abort("JIT compilation is not supported on this platform. Try without --jit");
+		rx_abort("rx mine JIT compilation is not supported on this platform. Try without --jit");
 		return -1;
 	}
 	if (!(g_mine_flags & RANDOMX_FLAG_JIT) && RANDOMX_HAVE_COMPILER) {
-		//printf("WARNING: You are using the interpreter mode. Use --jit for optimal performance.");
 		g_mine_flags |= RANDOMX_FLAG_JIT;
 	}
 
 	g_rx_mine_cache = randomx_alloc_cache(g_mine_flags);
 	if (g_rx_mine_cache == nullptr) {
-		rx_abort("can not alloc mine cache");
+		rx_abort("rx mine can not alloc mine cache");
 		return -1;
 	}
 
@@ -438,7 +439,7 @@ int rx_mine_init_seed(void *seed_data, size_t seed_size,uint32_t init_thread_cou
 
 	g_rx_mine_dataset = randomx_alloc_dataset(g_mine_flags);
 	if (g_rx_mine_dataset == NULL) {
-		rx_abort("alloc dataset failed");
+		rx_abort("rx mine alloc dataset failed");
 		return -1;
 	}
 
@@ -446,7 +447,7 @@ int rx_mine_init_seed(void *seed_data, size_t seed_size,uint32_t init_thread_cou
 	rx_mine_init_dataset(g_rx_mine_cache,init_thread_count);
 	//randomx_release_cache(g_rx_mine_cache);
 	//g_rx_mine_cache = NULL;
-	xdag_info("rx mine init seed finished");
+	xdag_info("rx mine rx mine init seed finished");
 	return 0;
 }
 
@@ -486,7 +487,6 @@ void rx_mine_hash(uint32_t thread_index,const void* data,size_t data_size,void* 
 	randomx_calculate_hash(g_rx_mine_vms[thread_index],data,data_size,output_hash);
 }
 
-
 void rx_mine_free() {
 	if (g_rx_mine_vms.size() != 0) {
 		for(int i=0;i < g_mining_thread_count;++i){
@@ -505,3 +505,6 @@ void rx_mine_free() {
 	}
 }
 
+uint64_t* get_current_rx_seed(){
+	return g_current_miner_seed;
+}

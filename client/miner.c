@@ -45,7 +45,7 @@ struct miner {
 
 static struct miner g_local_miner;
 static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+static xdag_hash_t g_fixed_miner_seed;
 /* a number of mining threads */
 int g_xdag_mining_threads = 0;
 
@@ -320,7 +320,7 @@ begin:
 			pthread_mutex_unlock(&g_miner_mutex);
 
 			xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
-				h[3], h[2], h[1], h[0], task->task_time << 16 | 0xffff, res);
+				h[0], h[1], h[2], h[3], task->task_time << 16 | 0xffff, res);
 
 			if(res) {
 				mess = "write error on socket"; goto err;
@@ -484,15 +484,17 @@ void *rx_miner_net_thread(void *arg)
 					memcpy(task->task[0].data,data[0].data, sizeof(xdag_hash_t));
 					memcpy(task->task[1].data,data[1].data,sizeof(xdag_hash_t));
 
-					xdag_info("receive pre hash %llu%llu%llu%llu",data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
-					xdag_info("receive rx key %llu%llu%llu%llu",data[1].data[0],data[1].data[1],data[1].data[2],data[1].data[3]);
-					xdag_info("copy our block hash %llu%llu%llu%llu to lastfield data",hash[0],hash[1],hash[2],hash[3]);
+					//xdag_info("recv pre %016llx%016llx%016llx%016llx",data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
+					xdag_info("use fixed seed %016llx%016llx%016llx%016llx",
+							g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
+					xdag_info("recv seed %016llx%016llx%016llx%016llx",data[1].data[0],data[1].data[1],data[1].data[2],data[1].data[3]);
+					xdag_info("copy our block hash %016llx%016llx%016llx%016llx to lastfield data",hash[0],hash[1],hash[2],hash[3]);
 					GetRandBytes(task->nonce.data, sizeof(xdag_hash_t));
 					memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
 					memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
 
-					xdag_rx_mine_first_hash(task->task[1].data,sizeof(task->task[1].data),
-							task->task[0].data,&task->lastfield,&task->lastfield.amount,task->minhash.data);
+					xdag_rx_mine_first_hash(g_fixed_miner_seed,sizeof(g_fixed_miner_seed),
+							task->task[0].data,task->lastfield.data,task->lastfield.amount,task->minhash.data);
 
 					xdag_info("task minhash first %016llx%016llx%016llx%016llx",
 					          task->minhash.data[0],task->minhash.data[1],task->minhash.data[2],task->minhash.data[3]);
@@ -520,9 +522,14 @@ void *rx_miner_net_thread(void *arg)
 				pthread_mutex_unlock(&g_miner_mutex);
 
 				uint64_t *d=(uint64_t *)&task->lastfield;
-				xdag_info("Sent lastfield data %llu%llu%llu%llu",d[0],d[1],d[2],d[3]);
-				xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
-				          h[3], h[2], h[1], h[0], task->task_time << 16 | 0xffff, res);
+
+				xdag_info("share seed %016llx%016llx%016llx%016llx",
+						g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
+				xdag_info("share pre %016llx%016llx%016llx%016llx",
+			          task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
+				xdag_info("share lastfield data %016llx%016llx%016llx%016llx",d[0],d[1],d[2],d[3]);
+				xdag_info("share : %016llx%016llx%016llx%016llx t=%llx res=%d",
+				          h[0], h[1], h[2], h[3], task->task_time << 16 | 0xffff, res);
 
 				if(res) {
 					mess = "write error on socket"; goto err;
@@ -591,6 +598,7 @@ static void *mining_thread(void *arg)
 void *rx_mining_thread(void *arg)
 {
 	xdag_hash_t hash;
+	xdag_hash_t pre_hash;
 	struct xdag_field last;
 	const int nthread = (int)(uintptr_t)arg;
 	uint64_t oldntask = 0;
@@ -611,19 +619,27 @@ void *rx_mining_thread(void *arg)
 			continue;
 		}
 
+		if(!memcmp(pre_hash,task->task[0].data, sizeof(xdag_hash_t))){
+			//xdag_info("pre hash already slow hashed");
+			sleep(1);
+			continue;
+		}else{
+			memcpy(pre_hash,task->task[0].data, sizeof(xdag_hash_t));
+			xdag_info("new pre hash to slow hash %016llx%016llx%016llx%016llx",pre_hash[0],pre_hash[1],pre_hash[2],pre_hash[3]);
+		}
+
 		if(ntask != oldntask) {
 			oldntask = ntask;
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
-			nonce = last.amount;
 		}
-		last.amount = xdag_rx_mine_slow_hash((uint32_t)(nthread-1),task->task[0].data, &last, &nonce, 1024,hash);
+		xdag_rx_mine_slow_hash((uint32_t)(nthread-1),task->task[0].data, last.data, last.amount, 1024,hash);
 
 		g_xdag_extstats.nhashes += 1024;
 		xd_rsdb_put_extstats();
 		xdag_set_min_share(task, last.data, hash);
 	}
 
-	return 0;
+	return NULL;
 }
 
 /* changes the number of mining threads */
@@ -648,10 +664,12 @@ int xdag_mining_start(int n_mining_threads)
 
 	if(g_xdag_mine_type == XDAG_RANDOMX){
 		//TODO:use key from pool task
+		xdag_info("xdag rx mining start init mine seed");
 		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-		xdag_hash_t fixed_key_hash;
-		xdag_address2hash(fixed_key,fixed_key_hash);
-		rx_mine_init_seed(fixed_key_hash, sizeof(fixed_key_hash),n_mining_threads);
+		xdag_address2hash(fixed_key,g_fixed_miner_seed);
+		xdag_info("xdag init fixed seed %016llx%016llx%016llx%016llx",
+		          g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
+		rx_mine_init_seed(g_fixed_miner_seed, sizeof(g_fixed_miner_seed),n_mining_threads);
 		rx_mine_alloc_vms(n_mining_threads);
 	}
 

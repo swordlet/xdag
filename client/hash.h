@@ -37,9 +37,9 @@ extern void xdag_hash_set_state(void *ctxv, xdag_hash_t state, size_t size);
 
 extern void xdag_rx_pre_hash(void *data, size_t size, xdag_hash_t hash);
 
-extern uint64_t xdag_rx_mine_first_hash(void* seed,size_t seed_size,xdag_hash_t *pre_hash,void *last_field , uint64_t *nonce,xdag_hash_t output_hash);
+extern uint64_t xdag_rx_mine_first_hash(void* seed,size_t seed_size,const xdag_hash_t pre_hash,xdag_hash_t last_data , uint64_t nonce,xdag_hash_t output_hash);
 
-extern uint64_t xdag_rx_mine_slow_hash(uint32_t thread_index,xdag_hash_t *pre_hash,void *last_field , uint64_t *nonce,
+extern uint64_t xdag_rx_mine_slow_hash(uint32_t thread_index,const xdag_hash_t pre_hash, xdag_hash_t last_data, uint64_t nonce,
 		uint64_t attempts,xdag_hash_t hash);
 
 #ifdef __cplusplus
