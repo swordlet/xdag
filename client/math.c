@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <math.h>
-#include "time.h"
+#include "xdag_time.h"
 #include "math.h"
 #include "utils/log.h"
 

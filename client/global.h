@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "types.h"
-#include "time.h"
+#include "xdag_time.h"
 #include "system.h"
 #include "block.h"
 #include "rsdb.h"

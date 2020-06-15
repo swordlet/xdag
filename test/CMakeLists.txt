@@ -10,6 +10,7 @@ add_subdirectory(test_core)
 add_subdirectory(test_libuv)
 add_subdirectory(test_randomx)
 add_subdirectory(test_xfer)
+add_subdirectory(test_mine)
 
 set(enabled_tests
         test_core

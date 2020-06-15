@@ -1,7 +1,7 @@
 /* time functions, T14.524-T14.582 $DVS:time$ */
 
-#ifndef XDAG_TIME_H
-#define XDAG_TIME_H
+#ifndef XDAG_XDAG_TIME_H
+#define XDAG_XDAG_TIME_H
 
 #include <stdint.h>
 #include <time.h>
@@ -22,6 +22,11 @@
 
 extern xtime_t g_xdag_era;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // returns a time period index, where a period is 64 seconds long
 xdag_frame_t xdag_get_frame(void);
 
@@ -37,12 +42,14 @@ void xdag_xtime_to_string(xtime_t time, char *buf);
 
 // convert time_t to string representation
 // minimal length of string buffer `buf` should be 50
-void xdag_time_to_string(time_t time, char* buf);
+void xdag_time_to_string(time_t time, char *buf);
 
 extern xtime_t xdag_get_xtimestamp(void);
 
 extern uint64_t xdag_get_time_ms(void);
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif

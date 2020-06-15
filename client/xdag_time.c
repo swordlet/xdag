@@ -1,7 +1,7 @@
 /* time functions, T14.524-T14.582 $DVS:time$ */
 
 #include <sys/time.h>
-#include "time.h"
+#include "xdag_time.h"
 #include "system.h"
 #include "utils/utils.h"
 

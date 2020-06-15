@@ -21,7 +21,7 @@
 #include "commands.h"
 #include "utils/utils.h"
 #include "mining_common.h"
-#include "time.h"
+#include "xdag_time.h"
 #include "math.h"
 #include "utils/atomic.h"
 #include "random_utils.h"

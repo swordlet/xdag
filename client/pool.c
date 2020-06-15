@@ -35,7 +35,7 @@
 #include "uthash/utlist.h"
 #include "uthash/uthash.h"
 #include "utils/atomic.h"
-#include "time.h"
+#include "xdag_time.h"
 #include "rx_mine_hash.h"
 #include "rx_pool_hash.h"
 

@@ -12,6 +12,7 @@
 #define DATA_SIZE          (sizeof(struct xdag_field) / sizeof(uint32_t))
 #define RX_DATA_SIZE       DATA_SIZE * 2
 #define BLOCK_HEADER_WORD  0x3fca9e2bu
+#define RX_POW_HEADER_WORD 0xf46b9854u  /* word of randomx work proof*/
 
 struct xdag_pool_task {
 	struct xdag_field task[2], lastfield, minhash, nonce;
