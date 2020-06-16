@@ -17,6 +17,7 @@
 #include "sync.h"
 #include "pool.h"
 #include "miner.h"
+#include "rx_miner.h"
 #include "address.h"
 #include "commands.h"
 #include "utils/utils.h"
@@ -1319,7 +1320,12 @@ begin:
 	if (is_wallet()) {
 		// start mining threads
 		xdag_mess("Starting mining threads...");
-		xdag_mining_start(n_mining_threads);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			rx_mining_start(n_mining_threads);
+		}else{
+			xdag_mining_start(n_mining_threads);
+		}
+
 	}
 
 	// periodic generation of blocks and determination of the main block
@@ -1368,7 +1374,12 @@ begin:
 		if (g_xdag_state == XDAG_STATE_REST) {
 			g_xdag_sync_on = 0;
 			pthread_mutex_unlock(&block_mutex);
-			xdag_mining_start(0);
+
+			if(g_xdag_mine_type == XDAG_RANDOMX){
+				rx_mining_start(n_mining_threads);
+			}else{
+				xdag_mining_start(0);
+			}
 
 			while (xdag_get_xtimestamp() - t < MAIN_CHAIN_PERIOD + (3 << 10)) {
 				sleep(1);

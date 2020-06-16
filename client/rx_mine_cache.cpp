@@ -51,6 +51,7 @@ int get_rx_seed_by_prehash(const xdag_hash_t prehash,xdag_hash_t seed) {
 	return 0;
 }
 
+
 int enqueue_rx_task(const xdag_hash_t prehash,const xdag_hash_t seed){
 
 	pthread_mutex_lock(&cache_mutex);
@@ -94,6 +95,10 @@ int get_rx_latest_prehash(xdag_hash_t prehash){
 	return 0;
 }
 
+/**
+ * traverse the task queue from begin to end
+ * and print the task info in map
+ * */
 void printf_all_rx_tasks(){
 	pthread_mutex_lock(&cache_mutex);
 	for(auto it=task_deque.begin();it!=task_deque.end();it++){
@@ -105,9 +110,6 @@ void printf_all_rx_tasks(){
 		std::cout << std::endl;
 	}
 	pthread_mutex_unlock(&cache_mutex);
-//	for(auto it=task_info_map.begin();it!=task_info_map.end();++it){
-//		std::cout << "prehash : " << it->first << " seed: " << it->second << std::endl;
-//	}
 }
 
 

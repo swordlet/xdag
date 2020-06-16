@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include "global.h"
 #include "mining_common.h"
+#include "rx_miner.h"
 #include "miner.h"
 #include "pool.h"
 #include "dfslib_crypt.h"
@@ -66,7 +67,11 @@ int xdag_initialize_mining(const char *pool_arg, const char *miner_address)
 	if(crypt_start()) return -1;
 
 	if(is_wallet()) {
-		return xdag_initialize_miner(pool_arg);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			return rx_initialize_miner(pool_arg);
+		}else{
+			return xdag_initialize_miner(pool_arg);
+		}
 	} else {
 		return xdag_initialize_pool(pool_arg);
 	}

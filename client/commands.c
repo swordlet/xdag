@@ -13,6 +13,7 @@
 #include "utils/utils.h"
 #include "pool.h"
 #include "miner.h"
+#include "rx_miner.h"
 #include "transport.h"
 #include "netdb.h"
 #include "memory.h"
@@ -444,8 +445,13 @@ void processMiningCommand(char *nextParam, FILE *out)
 	} else if(sscanf(cmd, "%d", &nthreads) != 1 || nthreads < 0) {
 		fprintf(out, "Illegal number.\n");
 	} else {
-		xdag_mining_start(nthreads);
-		fprintf(out, "%d mining threads running\n", g_xdag_mining_threads);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			rx_mining_start(nthreads);
+			fprintf(out, "%d rx mining threads running\n", g_xdag_mining_threads);
+		}else{
+			xdag_mining_start(nthreads);
+			fprintf(out, "%d mining threads running\n", g_xdag_mining_threads);
+		}
 	}
 }
 
@@ -979,7 +985,11 @@ void processHelpCommand(FILE *out)
 
 void xdagSetCountMiningTread(int miningThreadsCount)
 {
-	xdag_mining_start(miningThreadsCount);
+	if(g_xdag_mine_type == XDAG_RANDOMX){
+		rx_mining_start(miningThreadsCount);
+	}else{
+		xdag_mining_start(miningThreadsCount);
+	}
 }
 
 double xdagGetHashRate(void)
