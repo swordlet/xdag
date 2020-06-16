@@ -21,10 +21,19 @@ struct xdag_pool_task {
 	int slow_hash_ready;
 };
 
+typedef struct tag_rx_pool_task{
+	int firsthashed;              //first hash with random nonce
+	uint64_t first_nonce;         //first random nonce
+	xdag_hash_t prehash;          //pre hash
+	xdag_hash_t seed;             //seed used to randomx
+	xdag_hash_t minhash;          //minhash to sumbit
+	xdag_frame_t task_time;       //task create time
+} rx_pool_task;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
+
 extern struct xdag_pool_task g_xdag_pool_task[2];
 extern uint64_t g_xdag_pool_task_index; /* global variables are instantiated with 0 */
 

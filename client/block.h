@@ -56,6 +56,7 @@ enum bi_flags {
 #define MAX_WAITING_MAIN             1
 #define MAIN_START_AMOUNT            (1ll << 42)
 #define MAIN_APOLLO_AMOUNT           (1ll << 39)
+#define RX_POW_FIELDS                 3
 // nmain = 976487, hash is WENN9ZgvXA+vNaslRLFQPgBKIbJVaMsu
 //                         at 2019-12-30 18:01:35 UTC
 //                         get this info from https://explorer.xdag.io/

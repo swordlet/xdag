@@ -453,6 +453,14 @@ static int rx_send_to_pool(struct xdag_field *fld, int nfld)
 		f[0].transport_header |= (uint64_t)crc << 32;
 	}
 
+	// send rx pow to rx pool
+//	if(nfld == RX_POW_FIELDS){
+//		f[0].transport_header = 0;
+//		f[0].transport_header = RX_POW_HEADER_WORD;
+//		uint32_t crc = crc_of_array((uint8_t*)f, sizeof(struct xdag_field)*RX_POW_FIELDS);
+//		f[0].transport_header |= (uint64_t)crc << 32;
+//	}
+
 	for(int i = 0; i < nfld; ++i) {
 		dfslib_encrypt_array(g_crypt, (uint32_t*)(f + i), DATA_SIZE, m->nfield_out++);
 	}
@@ -484,6 +492,11 @@ static int rx_send_to_pool(struct xdag_field *fld, int nfld)
 		xdag_info("Sent  : %016llx%016llx%016llx%016llx t=%llx res=%d",
 		          h[3], h[2], h[1], h[0], fld[0].time, 0);
 	}
+
+//	if(nfld == RX_POW_FIELDS) {
+//		xdag_info("sent rx pre hash  : %016llx%016llx%016llx%016llx t=%llx res=%d",
+//		          fld[1].data[0], fld[1].data[1], fld[1].data[2], fld[1].data[3], fld[0].time, 0);
+//	}
 
 	return 0;
 }
