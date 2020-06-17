@@ -66,6 +66,8 @@ enum bi_flags {
 #define MAIN_APOLLO_TESTNET_HEIGHT   196250
 #define MAIN_BIG_PERIOD_LOG          21
 #define MAX_LINKS                    15
+#define ORPHAN_HASH_SIZE	2
+#define MAX_ALLOWED_EXTRA	0x10000
 
 #define xdag_type(b, n) ((b)->field[0].type >> ((n) << 2) & 0xf)
 
@@ -109,6 +111,7 @@ struct block_internal {
     xtime_t time;
     uint64_t storage_pos;
     xdag_hashlow_t ref;
+    struct orphan_block *oref;
     xdag_hashlow_t link[MAX_LINKS];
     //xdag_hashlow_t backrefs;
     atomic_uintptr_t remark;
@@ -130,6 +133,21 @@ struct block_backrefs {
     struct block_internal *backrefs[N_BACKREFS];
     struct block_backrefs *next;
 };
+
+struct orphan_block {
+    struct block_internal *orphan_bi;
+    struct orphan_block *next;
+    struct orphan_block *prev;
+    struct xdag_block block[0];
+};
+
+enum orphan_remove_actions {
+    ORPHAN_REMOVE_NORMAL,
+    ORPHAN_REMOVE_REUSE,
+    ORPHAN_REMOVE_EXTRA
+};
+
+#define get_orphan_index(bi)      (!!((bi)->flags & BI_EXTRA))
 
 #ifdef __cplusplus
 extern "C" {

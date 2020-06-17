@@ -8,6 +8,7 @@ Prerequisites:
 - cmake
 - automake
 - autoconf
+- openssl
 - libsnappy
 - zlib1g
 - liblz4
@@ -30,7 +31,7 @@ sudo update-alternatives --config gcc
 
 Steps to build on Debian/Ubuntu based distributions with a x86_64 machine:
 ```
-sudo apt install cmake automake autoconf gcc libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libgflags-dev libgtest-dev
+sudo apt install cmake automake autoconf gcc libssl-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libgflags-dev libjemalloc-dev libgtest-dev
 
 ```
 Steps to get depend source and compile
