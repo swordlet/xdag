@@ -5,8 +5,7 @@
 #ifndef XDAG_RX_MINE_CACHE_H
 #define XDAG_RX_MINE_CACHE_H
 
-#include <cstdint>
-#include <string>
+#include <stdint.h>
 #include "mining_common.h"
 #include "hash.h"
 
@@ -14,6 +13,8 @@
 extern "C"
 {
 #endif
+
+extern int get_rx_task_cache_size();
 
 extern int get_rx_task_by_idx(uint64_t index,rx_pool_task *task);
 
@@ -24,6 +25,8 @@ extern int enqueue_rx_task(rx_pool_task task);
 extern int update_rx_task_by_prehash(const xdag_hash_t prehash,rx_pool_task task);
 
 extern int get_rx_latest_prehash(xdag_hash_t prehash);
+
+extern int get_rx_latest_task(rx_pool_task *task);
 
 extern void printf_all_rx_tasks();
 

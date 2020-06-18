@@ -29,7 +29,9 @@
 #include "utils/utils.h"
 #include "random_utils.h"
 #include <randomx.h>
+#include <stdbool.h>
 #include "rx_mine_hash.h"
+#include "rx_mine_cache.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -47,12 +49,15 @@ struct miner {
 
 static struct miner g_local_miner;
 static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_update_min_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_pick_task_mutex = PTHREAD_MUTEX_INITIALIZER;
 static xdag_hash_t g_fixed_miner_seed;
 int g_rx_auto_swith_pool;
 int g_rx_mining_threads;
 static int g_socket = -1, g_rx_stop_mining = 1;
 
 static void *rx_mining_thread(void *arg);
+static void rx_update_task_min_hash(rx_pool_task rt,xdag_hash_t hash);
 static int rx_send_to_pool(struct xdag_field *fld, int nfld);
 
 static int can_send_share(time_t current_time, time_t task_time, time_t share_time)
@@ -261,30 +266,33 @@ void *rx_miner_net_thread(void *arg){
 					maxndata = sizeof(struct xdag_field);
 				} else if(maxndata == 2 * sizeof(struct xdag_field)) {
 					const uint64_t task_index = g_xdag_pool_task_index + 1;
-					struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-
-					task->task_time = xdag_get_frame();
-					memcpy(task->task[0].data,data[0].data, sizeof(xdag_hash_t));
-					memcpy(task->task[1].data,data[1].data,sizeof(xdag_hash_t));
-
-					//xdag_info("recv pre %016llx%016llx%016llx%016llx",data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
-					xdag_info("use fixed seed %016llx%016llx%016llx%016llx",
-					          g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
-					xdag_info("recv seed %016llx%016llx%016llx%016llx",data[1].data[0],data[1].data[1],data[1].data[2],data[1].data[3]);
-					xdag_info("copy our block hash %016llx%016llx%016llx%016llx to lastfield data",hash[0],hash[1],hash[2],hash[3]);
-					GetRandBytes(task->nonce.data, sizeof(xdag_hash_t));
-					memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
-					memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
-
-					xdag_rx_mine_first_hash(g_fixed_miner_seed,sizeof(g_fixed_miner_seed),
-					                        task->task[0].data,task->lastfield.data,task->lastfield.amount,task->minhash.data);
-
-					xdag_info("task minhash first %016llx%016llx%016llx%016llx",
-					          task->minhash.data[0],task->minhash.data[1],task->minhash.data[2],task->minhash.data[3]);
 					g_xdag_pool_task_index = task_index;
-					task_time = time(0);
 
-					xdag_info("rx mine task  : t=%llx N=%llu", task->task_time << 16 | 0xffff, task_index);
+					task_time = time(0);
+					xdag_frame_t task_frame = xdag_get_frame();
+					rx_pool_task rt;
+					if(get_rx_task_by_prehash(data[0].data,&rt)==0){
+						xdag_warn("warning: redundant prehash %016llx%016llx%016llx%016llx from pool",
+						          data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
+						ndata = 0;
+						maxndata = sizeof(struct xdag_field);
+						continue;
+					}
+
+					GetRandBytes(rt.lastfield, sizeof(xdag_hash_t));
+					rt.task_time = xdag_get_frame();
+					rt.nonce0=rt.lastfield[3];
+					rt.hashed=false;
+					rt.discards=0;
+					rt.discard_flag=0;
+					memcpy(rt.prehash,data[0].data, sizeof(xdag_hash_t));
+					memcpy(rt.seed,data[1].data, sizeof(xdag_hash_t));
+					memcpy(rt.lastfield,hash,sizeof(xdag_hashlow_t));
+					enqueue_rx_task(rt);
+
+					xdag_info("enqueue rx pre : %016llx%016llx%016llx%016llx",rt.prehash[0],rt.prehash[1],rt.prehash[2],rt.prehash[3]);
+					xdag_info("enqueue rx seed : %016llx%016llx%016llx%016llx",rt.seed[0],rt.seed[1],rt.seed[2],rt.seed[3]);
+					xdag_info("rx mine task  : t=%llx N=%llu", task_frame << 16 | 0xffff, task_index);
 
 					ndata = 0;
 					maxndata = sizeof(struct xdag_field);
@@ -295,28 +303,32 @@ void *rx_miner_net_thread(void *arg){
 		}
 
 		if(p.revents & POLLOUT) {
-
-			const uint64_t task_index = g_xdag_pool_task_index;
-			struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-			uint64_t *h = task->minhash.data;
-
-			share_time = time(0);
-			res = rx_send_to_pool(&task->lastfield, 1);
-			pthread_mutex_unlock(&g_miner_mutex);
-
-			uint64_t *d=(uint64_t *)&task->lastfield;
-
-			xdag_info("share seed %016llx%016llx%016llx%016llx",
-			          g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
-			xdag_info("share pre %016llx%016llx%016llx%016llx",
-			          task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
-			xdag_info("share lastfield data %016llx%016llx%016llx%016llx",d[0],d[1],d[2],d[3]);
-			xdag_info("share : %016llx%016llx%016llx%016llx t=%llx res=%d",
-			          h[0], h[1], h[2], h[3], task->task_time << 16 | 0xffff, res);
-
-			if(res) {
-				mess = "write error on socket"; goto err;
-			}
+				share_time = time(0);
+				size_t task_num=get_rx_task_cache_size();
+				xdag_info("share task num %lu",task_num);
+				for(int i=0;i<task_num;++i){
+					rx_pool_task rt;
+					get_rx_task_by_idx(i,&rt);
+					//task is hashed and not discard by all thread
+					if(rt.hashed && rt.discards < g_rx_mining_threads){
+						xdag_info("rx task %016llx%016llx%016llx%016llx hashed %d discards %d",i,rt.prehash,rt.discards);
+						struct xdag_field fld;
+						memcpy(fld.data, rt.lastfield, sizeof(xdag_hash_t));
+						res = rx_send_to_pool(&fld, 1);
+						if(res) {
+							mess = "write error on socket"; goto err;
+						}
+						xdag_info("share seed %016llx%016llx%016llx%016llx",
+								g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
+						xdag_info("share pre %016llx%016llx%016llx%016llx",
+								rt.prehash[0], rt.prehash[1], rt.prehash[2], rt.prehash[3]);
+						xdag_info("share lastfield data %016llx%016llx%016llx%016llx",
+								rt.lastfield[0],rt.lastfield[1],rt.lastfield[2],rt.lastfield[3]);
+						xdag_info("share minhash: %016llx%016llx%016llx%016llx t=%llx res=%d",
+								rt.minhash[0], rt.minhash[1], rt.minhash[2], rt.minhash[3], rt.task_time << 16 | 0xffff, res);
+					}
+				}
+				pthread_mutex_unlock(&g_miner_mutex);
 		} else {
 			pthread_mutex_unlock(&g_miner_mutex);
 		}
@@ -388,12 +400,12 @@ int rx_pick_pool(char *pool_address){
 
 static void *rx_mining_thread(void *arg)
 {
-	xdag_hash_t hash;
-	xdag_hash_t pre_hash;
+	xdag_hash_t current_hash;
+	xdag_hash_t lastest_prehash;
+	rx_pool_task rt;
+	uint64_t nonce;
 	struct xdag_field last;
 	const int nthread = (int)(uintptr_t)arg;
-	uint64_t oldntask = 0;
-	uint64_t nonce;
 
 	xdag_info("start rx mining thread %lu",pthread_self());
 
@@ -402,34 +414,86 @@ static void *rx_mining_thread(void *arg)
 	}
 
 	while(!g_rx_stop_mining) {
-		const uint64_t ntask = g_xdag_pool_task_index;
-		struct xdag_pool_task *task = &g_xdag_pool_task[ntask & 1];
+		// pick up a task
+		xdag_info("start pick a task");
+		if(get_rx_latest_task(&rt)==0){
+			//pthread_mutex_lock(&g_pick_task_mutex);
+			xdag_info("get latest rx task pre : %016llx%016llx%016llx%016llx discard %d",
+					rt.prehash[0],rt.prehash[1],rt.prehash[2],rt.prehash[3],rt.discards);
+			xdag_info("get current rx task pre : %016llx%016llx%016llx%016llx",
+					current_hash[0],current_hash[1],current_hash[2],current_hash[3]);
+			if(!memcmp(rt.prehash,current_hash,sizeof(xdag_hash_t))
+				&& rt.discards < g_rx_mining_threads){
+				//if task not changed continue mining
+				xdag_info("rx task not changed continue mining");
+			}else if(rt.discards >= g_rx_mining_threads) {
+				xdag_info("latest task discarded waiting...");
+				sleep(1);
+				continue;
+			}else{
+				//if task changed and not discard
+				xdag_info("task changed and not discard");
+				rx_pool_task tmp_rt;
+				if(get_rx_task_by_prehash(current_hash,&tmp_rt)!=0){
+					//if current hash not initialized
+					xdag_info("current hash not exist set to %016llx%016llx%016llx%016llx",rt.prehash);
+					nonce=rt.nonce0;
+					memcpy(current_hash,rt.prehash,sizeof(xdag_hash_t));
+				}else{
+					//if current hash initialized and task changed discard it
+					xdag_info("discard current hash %016llx%016llx%016llx%016llx",current_hash);
+					nonce=rt.nonce0;
+					tmp_rt.discards+=1;
+					tmp_rt.discard_flag |= (1 << nthread);
+					update_rx_task_by_prehash(current_hash,tmp_rt);
+					memcpy(current_hash,rt.prehash,sizeof(xdag_hash_t));
+				}
+			}
 
-		if(!ntask) {
-			sleep(1);
-			continue;
-		}
+			//do slow hash
+			xdag_hash_t output_hash;
+			xdag_rx_mine_slow_hash((uint32_t) (nthread - 1), &rt, &nonce, g_rx_mining_threads,1024, output_hash);
 
-		if(!memcmp(pre_hash,task->task[0].data, sizeof(xdag_hash_t))){
-			sleep(1);
-			continue;
+			g_xdag_extstats.nhashes += 1024;
+			xd_rsdb_put_extstats();
+
+			//update the task min hash
+			xdag_info("update task : rt hashed %d rt discard %d",rt.hashed,rt.discards);
+			rx_update_task_min_hash(rt,output_hash);
+			xdag_info("update task : finished");
 		}else{
-			memcpy(pre_hash,task->task[0].data, sizeof(xdag_hash_t));
-			xdag_info("new pre hash to slow hash %016llx%016llx%016llx%016llx",pre_hash[0],pre_hash[1],pre_hash[2],pre_hash[3]);
+			xdag_info("task queue empty waiting ...");
+			//pthread_mutex_unlock(&g_pick_task_mutex);
+			sleep(1);
+			continue;
 		}
-
-		if(ntask != oldntask) {
-			oldntask = ntask;
-			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
-		}
-		xdag_rx_mine_slow_hash((uint32_t)(nthread-1),task->task[0].data, last.data, last.amount, 1024,hash);
-
-		g_xdag_extstats.nhashes += 1024;
-		xd_rsdb_put_extstats();
-		xdag_set_min_share(task, last.data, hash);
 	}
 
 	return NULL;
+}
+
+static void rx_update_task_min_hash(rx_pool_task task,xdag_hash_t hash){
+	xdag_info("rx update task min hash");
+	//pthread_mutex_lock(&g_update_min_mutex);
+	if(!task.hashed){
+		task.hashed=true;
+		memcpy(task.minhash,hash,sizeof(xdag_hash_t));
+		update_rx_task_by_prehash(task.prehash,task);
+		xdag_info("rx update task min hash return 1");
+		//pthread_mutex_unlock(&g_update_min_mutex);
+		return;
+	}
+
+	if(xdag_cmphash(hash,task.minhash) < 0){
+		memcpy(task.minhash,hash,sizeof(xdag_hash_t));
+		update_rx_task_by_prehash(task.prehash,task);
+		//pthread_mutex_unlock(&g_update_min_mutex);
+		xdag_info("rx update task min hash return 2");
+		return;
+	}
+	xdag_info("rx update task min hash return 3");
+	//pthread_mutex_lock(&g_update_min_mutex);
+	return;
 }
 
 static int rx_send_to_pool(struct xdag_field *fld, int nfld)

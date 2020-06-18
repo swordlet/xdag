@@ -6,7 +6,6 @@
 #define XDAG_STRING_TOOLS_H
 
 #include <string>
-#include <cstdint>
 
 namespace string_tools
 {

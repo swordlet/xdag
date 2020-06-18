@@ -7,6 +7,8 @@
 #define poll WSAPoll
 #else
 #include <poll.h>
+#include <stdbool.h>
+
 #endif
 
 #define DATA_SIZE          (sizeof(struct xdag_field) / sizeof(uint32_t))
@@ -22,11 +24,14 @@ struct xdag_pool_task {
 };
 
 typedef struct tag_rx_pool_task{
-	int firsthashed;              //first hash with random nonce
-	uint64_t first_nonce;         //first random nonce
+	atomic_bool hashed;           //task is first hashed with random nonce
+	atomic_int discards;          //task discard count if task discard count >= mining threads,task will be discard
+	uint64_t discard_flag;        //discard flags
+	uint64_t nonce0;              //first random nonce
 	xdag_hash_t prehash;          //pre hash
 	xdag_hash_t seed;             //seed used to randomx
-	xdag_hash_t minhash;          //minhash to sumbit
+	xdag_hash_t lastfield;        //lastfield commit to pool
+	xdag_hash_t minhash;          //minhash for mine compare
 	xdag_frame_t task_time;       //task create time
 } rx_pool_task;
 

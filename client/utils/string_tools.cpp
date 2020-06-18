@@ -20,7 +20,7 @@ namespace string_tools{
 
 	void hex2bin(std::string in_str, uint8_t * out) {
 		const char* in=in_str.c_str();
-		size_t len = in_str.length();
+		size_t len = strlen(in);
 		static const unsigned char TBL[] = {
 				0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  58,  59,  60,  61,
 				62,  63,  64,  10,  11,  12,  13,  14,  15,  71,  72,  73,  74,  75,

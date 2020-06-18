@@ -1,55 +1,37 @@
-//
-// Created by mac on 2020/6/15.
-//
-#include <time.h>
-#include <rx_mine_cache.h>
+#include <string_tools.h>
 #include <hash.h>
-#include <unistd.h>
-#include <iostream>
-#include <map>
-#include <mining_common.h>
-#include <sstream>
 #include <utils/random_utils.h>
+#include <iostream>
+#include <sstream>
+#include <thread>
+#include <utility>
+#include <mining_common.h>
+#include <rx_mine_cache.h>
 
-static std::string hash2hex(xdag_hash_t hash){
-	return bin2hex((uint8_t*)hash,sizeof(uint64_t)*4);
+static std::string hash2hex(const xdag_hash_t h){
+	char buf[64];
+	sprintf(buf,"%016llx%016llx%016llx%016llx",h[0],h[1],h[2],h[3]);
+	return buf;
 }
 
 static void hex2hash(std::string hex,xdag_hash_t hash){
-	hex2bin(hex,(uint8_t*)hash);
+	string_tools::hex2bin(std::move(hex),(uint8_t*)hash);
 }
 
 void test1(){
-	//string_tools::bin2hex()
 	xdag_hash_t hash1;
 	GetRandBytes(hash1,sizeof(hash1));
 	std::string hex1=hash2hex(hash1);
-	std::cout << "hash1 after rand hex is " << hash2hex(hash1) << std::endl;
+	printf("hash1 is %016llx%016llx%016llx%016llx \n",hash1[0],hash1[1],hash1[2],hash1[3]);
+	std::cout << "hex1 is " << hex1 << std::endl;
 
 	xdag_hash_t hash2;
 	hex2hash(hex1,hash2);
-	std::cout << "hash2 hex is " << hash2hex(hash2) << std::endl;
-
-
-	xdag_hash_t prehash1;
-	xdag_hash_t seedhash1;
-	GetRandBytes(prehash1,sizeof(prehash1));
-	GetRandBytes(seedhash1,sizeof(seedhash1));
-	std::string prehex1=hash2hex(prehash1);
-	std::string seedhex1=hash2hex(seedhash1);
-	std::cout << "prehash1 is " << prehex1 << std::endl;
-	std::cout << "seedhash1 is " << seedhex1 << std::endl;
-
-	std::map<std::string,std::string> m1;
-	m1.insert(std::make_pair(prehex1,seedhex1));
-	auto it=m1.find(prehex1);
-	if(it!= m1.end()){
-		std::cout << "find seed to prehash1 " << it->second << std::endl;
-	}
+	std::string hex2=hash2hex(hash2);
+	std::cout << "hex2 is " << hex1 << std::endl;
 }
 
 void test2(){
-
 	xdag_hash_t pre_hash;
 	rx_pool_task task;
 
@@ -91,7 +73,7 @@ void test2(){
 		enqueue_rx_task(task);
 
 		printf_all_rx_tasks();
-		sleep(1);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
 	//test get the latest task
@@ -140,11 +122,17 @@ void test2(){
 
 	std::cout << "updated task 1 3 5" <<std::endl;
 	printf_all_rx_tasks();
+
+	rx_pool_task rt6;
+	get_rx_latest_task(&rt6);
+	std::cout << "get latest task pre: " << hash2hex(rt6.prehash) <<std::endl;
+	std::cout << "get latest task seed: " << hash2hex(rt6.seed) <<std::endl;
 }
 
 int main(int argc,char* argv[]){
 
-	//test1();
+	test1();
 	test2();
+
 	return 0;
 }

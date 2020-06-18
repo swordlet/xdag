@@ -74,6 +74,21 @@ target_link_libraries(test_rx_seedheight
         ${RANDOMX_LIBRARY}
         ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(hex_util
+        hex_util.cpp)
+include_directories(hex_util
+        ${GTEST_INCLUDE_DIR}
+        ${XDAG_CORE_INCLUDE_DIR}
+        ${UTILS_INCLUDE_DIR})
+
+target_link_libraries(hex_util
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${UTILS_LIBRARY}
+        ${XDAG_CORE_LIBRARY}
+        )
+
+
 if(RUN_TEST)
     #run randomx-test after build
     add_custom_target(test_randomx_all

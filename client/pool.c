@@ -863,6 +863,68 @@ static int is_worker_name_received(connection_list_element *connection)
 // returns:
 // 0 - error
 // 1 - success
+static int process_received_rx_share(connection_list_element *connection)
+{
+	struct connection_pool_data *conn_data = &connection->connection_data;
+
+	const uint64_t task_index = g_xdag_pool_task_index;
+	struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
+
+	if(++conn_data->shares_count > SHARES_PER_TASK_LIMIT) {   //if shares count limit is exceded it is considered as spamming and current connection is disconnected
+		close_connection(connection, "Spamming of shares");
+		return 0;
+	}
+
+	if(conn_data->state == UNKNOWN_ADDRESS) {
+		if(!register_new_miner(connection)) {
+			return 0;
+		}
+	} else {
+		if(!conn_data->miner) {
+			close_connection(connection, "Miner is unregistered");
+			return 0;
+		}
+		if(memcmp(conn_data->miner->id.data, conn_data->data, sizeof(xdag_hashlow_t)) != 0) {
+			close_connection(connection, "Wallet address was unexpectedly changed");
+			return 0;
+		}
+		memcpy(conn_data->miner->id.data, conn_data->data, sizeof(struct xdag_field));	//TODO:do I need to copy whole field?
+	}
+
+	conn_data->last_share_time = time(0);
+
+	if(share_can_be_accepted(conn_data->miner, (uint64_t*)conn_data->data, task_index)) {
+		xdag_hash_t hash;
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
+			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
+			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));
+			uint64_t *d=(uint64_t*)conn_data->data;
+			uint64_t *td=(uint64_t*)rx_task_data;
+
+			rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
+
+			xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
+			xdag_info("rx pre %016llx%016llx%016llx%016llx from miner",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
+			xdag_info("rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
+			xdag_info("rx task data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
+			          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
+			xdag_info("rx share %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
+		}else{
+			xdag_hash_final(task->ctx0, conn_data->data, sizeof(struct xdag_field), hash);
+		}
+		xdag_set_min_share(task, conn_data->miner->id.data, hash);
+		update_mean_log_diff(conn_data, task, hash);
+		calculate_nopaid_shares(conn_data, task, hash);
+	}
+
+	return 1;
+}
+
+// processes received share
+// returns:
+// 0 - error
+// 1 - success
 static int process_received_share(connection_list_element *connection)
 {
 	struct connection_pool_data *conn_data = &connection->connection_data;
@@ -963,8 +1025,14 @@ static int receive_data_from_connection(connection_list_element *connection)
 		}
 
 		//share is received
-		if(!process_received_share(connection)) {
-			return 0;
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			if(!process_received_share(connection)) {
+				return 0;
+			}
+		}else{
+			if(!process_received_share(connection)) {
+				return 0;
+			}
 		}
 	}
 
