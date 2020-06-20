@@ -53,22 +53,24 @@ static int load_remark(struct block_internal*, xdag_remark_t);
 //static void order_ourblocks_by_amount(struct block_internal *bi);
 static inline void add_ourblock(struct block_internal *nodeBlock);
 extern void *sync_thread(void *arg);
-static inline int mempool_put(struct block_internal *);
-static inline int mempool_ifmerge(struct block_internal *);
-static inline int mempool_get(xdag_hashlow_t ,struct block_internal **);
+static inline int mempool_put(xdag_hashlow_t, struct block_internal*);
+static inline int mempool_ifmerge(xdag_hashlow_t, struct block_internal*);
+static inline int mempool_get(xdag_hashlow_t, struct block_internal**);
 static inline int mempool_del(xdag_hashlow_t);
 
 #define KEY_MAX_LENGTH 48
-static inline int mempool_put(struct block_internal *bi) {
+static inline int mempool_put(xdag_hashlow_t hash, struct block_internal *bi) {
     char *key = calloc(48, 1);
-    snprintf(key, KEY_MAX_LENGTH, "%016llx%016llx%016llx", bi->hash[2], bi->hash[1], bi->hash[0]);
-    return hashmap_put(g_mempool, key, bi);
+    snprintf(key, KEY_MAX_LENGTH, "%016llx%016llx%016llx", hash[2], hash[1], hash[0]);
+    int ret = hashmap_put(g_mempool, key, bi);;
+    return ret;
 }
 
-static inline int mempool_ifmerge(struct block_internal *bi) {
+static inline int mempool_ifmerge(xdag_hashlow_t hash, struct block_internal *bi) {
     struct block_internal *ibi = NULL;
-    if(!mempool_get(bi->hash, &ibi)) {
-        memcpy(ibi, bi, sizeof(struct block_internal));
+    if(!mempool_get(hash, &ibi)) {
+        ibi->flags = bi->flags;
+        ibi->amount = bi->amount;
         return 0;
     }
     return 1;
@@ -90,8 +92,33 @@ static inline int block_by_hash(xdag_hashlow_t hash, struct block_internal *bi)
 {
     struct block_internal *mbi = NULL;
     if(!mempool_get(hash, &mbi)){
-        xdag_info("block_by_hash mempool_get OK: hash(%016llx%016llx%016llx)", hash[2], hash[1], hash[0]);
+        xdag_info("     block_by_hash   OK: hash(%016llx%016llx%016llx)", hash[2], hash[1], hash[0]);
+        xdag_info("     block_by_hash mbi->oref=%p", mbi->oref);
+        if(memcmp(hash, mbi->hash, sizeof(xdag_hashlow_t))) {
+            if(memcmp(hash, mbi->hash, sizeof(xdag_hashlow_t))) {
+                xdag_info("     hash mempool_get OK: hash(%016llx%016llx%016llx)", hash[2], hash[1], hash[0]);
+                xdag_info("mbi->hash mempool_get OK: hash(%016llx%016llx%016llx)", mbi->hash[2], mbi->hash[1], mbi->hash[0]);
+            }
+        }
+
         memcpy(bi, mbi, sizeof(struct block_internal));
+//        memcpy(bi->hash, mbi->hash, sizeof(xdag_hash_t));
+//        memcpy(bi->ref, mbi->ref, sizeof(xdag_hashlow_t));
+//        bi->oref = mbi->oref;
+//        bi->flags = mbi->flags;
+//        bi->amount = mbi->amount;
+//        bi->difficulty = mbi->difficulty;
+//        bi->in_mask = mbi->in_mask;
+//        bi->max_diff_link = mbi->max_diff_link;
+//        bi->fee = mbi->fee;
+//        bi->time = mbi->time;
+//        bi->storage_pos = mbi->storage_pos;
+
+        if(memcmp(hash, bi->hash, sizeof(xdag_hashlow_t))) {
+            xdag_info("     hash mempool_get OK: hash(%016llx%016llx%016llx)", hash[2], hash[1], hash[0]);
+            xdag_info(" bi->hash mempool_get OK: hash(%016llx%016llx%016llx)", bi->hash[2], bi->hash[1], bi->hash[0]);
+            xdag_info("mbi->hash mempool_get OK: hash(%016llx%016llx%016llx)", mbi->hash[2], mbi->hash[1], mbi->hash[0]);
+        }
         return 0;
     }
     if(!xd_rsdb_get_bi(hash, bi)){
@@ -189,7 +216,7 @@ static uint64_t apply_block(struct block_internal *bi)
 
     bi->flags |= BI_APPLIED;
     accept_amount(bi, sum_in - sum_out);
-    mempool_ifmerge(bi);
+    mempool_ifmerge(bi->hash, bi);
     xd_rsdb_merge_bi(bi);
 	append_block_info(bi); //TODO: figure out how to detect when the block is rejected.
 	return bi->fee;
@@ -228,7 +255,7 @@ static uint64_t unapply_block(struct block_internal* bi)
             }
         }
 	}
-    mempool_ifmerge(bi);
+    mempool_ifmerge(bi->hash, bi);
     xd_rsdb_merge_bi(bi);
 	return (xdag_amount_t)0 - bi->fee;
 }
@@ -311,7 +338,7 @@ static void set_main(struct block_internal *m)
 	accept_amount(m, amount);
 	accept_amount(m, apply_block(m));
     memcpy(m->ref, m->hash, sizeof(xdag_hashlow_t));
-    mempool_ifmerge(m);
+    mempool_ifmerge(m->hash, m);
     xd_rsdb_put_stats(m->time);
     xd_rsdb_merge_bi(m);
 	log_block((m->flags & BI_OURS ? "MAIN +" : "MAIN  "), m->hash, m->time, m->storage_pos);
@@ -326,7 +353,7 @@ static void unset_main(struct block_internal *m)
 	m->flags &= ~BI_MAIN;
 	accept_amount(m, (xdag_amount_t)0 - amount);
 	accept_amount(m, unapply_block(m));
-    mempool_ifmerge(m);
+    mempool_ifmerge(m->hash, m);
     xd_rsdb_put_stats(m->time);
     xd_rsdb_merge_bi(m);
 	log_block("UNMAIN", m->hash, m->time, m->storage_pos);
@@ -383,7 +410,7 @@ static void unwind_main(struct block_internal *bi)
          retcode = block_by_hash(b.link[b.max_diff_link], &b))
     {
         b.flags &= ~BI_MAIN_CHAIN;
-        mempool_ifmerge(&b);
+        //mempool_ifmerge(b.hash, &b);
         xd_rsdb_merge_bi(&b);
         if (b.flags & BI_MAIN) {
             unset_main(&b);
@@ -784,6 +811,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
     if (g_xdag_extstats.nextra > MAX_ALLOWED_EXTRA
         && (g_xdag_state == XDAG_STATE_SYNC || g_xdag_state == XDAG_STATE_STST)) {
         /* if too many extra blocks then reuse the oldest */
+        xdag_info("reuse block");
         nodeBlock = g_orphan_first[1]->orphan_bi;
         remove_orphan(nodeBlock, ORPHAN_REMOVE_REUSE);
 //        remove_index(nodeBlock);
@@ -809,11 +837,12 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
     //memset(nodeBlock->backrefs, 0, sizeof(xdag_hashlow_t));
 
 	if(nodeBlock->flags & BI_REMARK) {
+	    //TODO move to remove_orphon
         xd_rsdb_put_remark(nodeBlock, newBlock->field[remark_index].remark);
 		atomic_init_uintptr(&nodeBlock->remark, (uintptr_t)NULL);
 	}
 
-    if(!mempool_put(nodeBlock)) {
+    if(!mempool_put(nodeBlock->hash, nodeBlock)) {
         xdag_info("mempool_put_798: hash(%016llx%016llx%016llx),pos=%llx,flags=%d", nodeBlock->hash[2], nodeBlock->hash[1], nodeBlock->hash[0], nodeBlock->storage_pos, nodeBlock->flags);
 //    if(!xd_rsdb_merge_bi(nodeBlock)) {
         //xdag_info("xdag_rsdb_put_bi_835: hash(%016llx%016llx%016llx%016llx),pos=%llx,flags=%d", nodeBlock->hash[3], nodeBlock->hash[2], nodeBlock->hash[1], nodeBlock->hash[0], nodeBlock->storage_pos, nodeBlock->flags);
@@ -843,7 +872,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 //                blockRef0 = blockRef;
 //            }
 //        }
-        int br_retcode = 0, br0_retcode = 0;
+        int br_retcode = 0, br0_retcode = 1;
         struct block_internal blockRef, blockRef0;
 		for(memcpy(&blockRef, nodeBlock, sizeof(blockRef)), memset(&blockRef0, 0, sizeof(blockRef0));
             !br_retcode && !(blockRef.flags & BI_MAIN_CHAIN);
@@ -858,7 +887,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 				blockRef.flags |= BI_MAIN_CHAIN;
                 memcpy(&blockRef0, &blockRef, sizeof(struct block_internal));
                 br0_retcode = 0;
-                mempool_ifmerge(&blockRef);
+                mempool_ifmerge(blockRef.hash, &blockRef);
                 xd_rsdb_merge_bi(&blockRef);
 			}
 		}
@@ -912,12 +941,15 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
         add_ourblock(nodeBlock);
 	}
 
-    for(i = 0; i < tmpNodeBlock.nlinks; ++i) {
-        struct block_internal b;
-        if(!block_by_hash(tmpNodeBlock.link[i], &b)) {
-            remove_orphan(&b, tmpNodeBlock.flags & BI_EXTRA ? ORPHAN_REMOVE_EXTRA : ORPHAN_REMOVE_NORMAL);
-            if(tmpNodeBlock.linkamount[i]) {
-                add_backref(tmpNodeBlock.link[i], nodeBlock);
+    for(i = 0; i < nodeBlock->nlinks; ++i) {
+        struct block_internal linkb;
+        memset(&linkb, 0, sizeof(struct block_internal));
+        if(!block_by_hash(nodeBlock->link[i], &linkb)) {
+            xdag_info("remove_orphan_920_b: hash(%016llx%016llx%016llx)", linkb.hash[2], linkb.hash[1], linkb.hash[0]);
+            xdag_info("remove_orphan_921_b: hash(%016llx%016llx%016llx)", nodeBlock->link[i][2], nodeBlock->link[i][1], nodeBlock->link[i][0]);
+            remove_orphan(&linkb, tmpNodeBlock.flags & BI_EXTRA ? ORPHAN_REMOVE_EXTRA : ORPHAN_REMOVE_NORMAL);
+            if(nodeBlock->linkamount[i]) {
+                add_backref(nodeBlock->link[i], nodeBlock);
             }
         }
     }
@@ -2145,7 +2177,7 @@ void remove_orphan(struct block_internal *bi, int remove_action)
         struct orphan_block *obt = bi->oref;
         if (obt == NULL) {
             xdag_crit("Critical error. obt=0");
-        } else if ( memcmp(obt->orphan_bi->hash, bi->hash, sizeof(xdag_hashlow_t))) {
+        } else if ( memcmp((obt->orphan_bi)->hash, bi->hash, sizeof(xdag_hashlow_t))) {
             //TODO if block is saved by rocksdb
             xdag_crit("Critical error(obt->orphan_bi): hash(%016llx%016llx%016llx)", obt->orphan_bi->hash[2], obt->orphan_bi->hash[1], obt->orphan_bi->hash[0]);
             xdag_crit("Critical error(            bi): hash(%016llx%016llx%016llx)", bi->hash[2], bi->hash[1], bi->hash[0]);
@@ -2177,8 +2209,9 @@ void remove_orphan(struct block_internal *bi, int remove_action)
 
             bi->oref = 0;
             bi->flags |= BI_REF;
+            xdag_info("mempool_del_2182: hash(%016llx%016llx%016llx)", bi->hash[2], bi->hash[1], bi->hash[0]);
             mempool_del(bi->hash);
-            xdag_info("mempool_del_2179: hash(%016llx%016llx%016llx),pos=%llx,flags=%d", bi->hash[2], bi->hash[1], bi->hash[0], bi->storage_pos, bi->flags);
+            xdag_info("mempool_del_2184: hash(%016llx%016llx%016llx)", bi->hash[2], bi->hash[1], bi->hash[0]);
             xd_rsdb_merge_bi(bi);
             free(obt);
         }
@@ -2204,6 +2237,7 @@ void add_orphan(struct block_internal *bi, struct xdag_block *block)
         obt->orphan_bi = bi;
         obt->prev = g_orphan_last[index];
         obt->next = 0;
+        xdag_info("add_orphan hash(%016llx%016llx%016llx)", bi->hash[2], bi->hash[1], bi->hash[0]);
         bi->oref = obt;
         *(g_orphan_last[index] ? &g_orphan_last[index]->next : &g_orphan_first[index]) = obt;
         g_orphan_last[index] = obt;
