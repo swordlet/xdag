@@ -16,6 +16,7 @@ struct xdag_pool_task {
 	struct xdag_field task[2], lastfield, minhash, nonce;
 	xdag_frame_t task_time;
 	void *ctx0, *ctx;
+	int slow_hash_ready;
 };
 
 #ifdef __cplusplus

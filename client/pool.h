@@ -10,6 +10,7 @@
 
 enum disconnect_type
 {
+	DISCONNECT_INIT = 0,
 	DISCONNECT_BY_ADRESS = 1,
 	DISCONNECT_BY_IP = 2,
 	DISCONNECT_ALL = 3

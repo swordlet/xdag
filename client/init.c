@@ -101,6 +101,8 @@ int xdag_init(int argc, char **argv, int isGui)
 
 	g_xdag_run = 1;
 	xdag_show_state(0);
+
+	g_xdag_mine_type = XDAG_RAW;
 	
 	struct startup_parameters parameters;
 	int res = parse_startup_parameters(argc, argv, &parameters);
@@ -130,7 +132,7 @@ int xdag_init(int argc, char **argv, int isGui)
 			return -1;
 		}
 	}
-    pthread_t th;
+//    pthread_t th;
     if(!isGui) {
         if(is_pool() || (parameters.transport_flags & XDAG_DAEMON) > 0) {
             xdag_mess("Starting terminal server...");
@@ -207,6 +209,8 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 			if(++i < argc) {
 				parameters->pool_configuration.mining_configuration = argv[i];
 			}
+		} else if(ARG_EQUAL(argv[i], "-randomx", "")){
+      g_xdag_mine_type = XDAG_RANDOMX;
 		} else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
 			g_xdag_run = 0;
 		} else if(ARG_EQUAL(argv[i], "-s", "")) { /* address of this node */

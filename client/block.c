@@ -40,6 +40,7 @@ void append_block_info(struct block_internal *bi);
 int32_t check_signature_out(struct block_internal*, struct xdag_public_key*, const int);
 static int32_t find_and_verify_signature_out(struct xdag_block*, struct xdag_public_key*, const int);
 int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
+int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
 int remove_orphan(xdag_hashlow_t);
 void add_orphan(struct block_internal*, struct xdag_block*);
 static inline size_t remark_acceptance(xdag_remark_t);
@@ -1081,8 +1082,14 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 	}
 
 	if (mining) {
-		if(!do_mining(block, &pretop, send_time)) {
-			goto begin;
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			if(!do_rx_mining(block, &pretop, send_time)) {
+				goto begin;
+			}
+		}else{
+			if(!do_mining(block, &pretop, send_time)) {
+				goto begin;
+			}
 		}
 	}
 
@@ -1161,6 +1168,43 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 		sleep(1);
 		pthread_mutex_lock(&g_create_block_mutex);
         struct block_internal *pretop_new = pretop_block();
+		pthread_mutex_unlock(&g_create_block_mutex);
+		if(*pretop != pretop_new && xdag_get_xtimestamp() < send_time) {
+			*pretop = pretop_new;
+			xdag_info("Mining: start from beginning because of pre-top block changed");
+			return 0;
+		}
+	}
+
+	pthread_mutex_lock((pthread_mutex_t*)g_ptr_share_mutex);
+	memcpy(block[0].field[XDAG_BLOCK_FIELDS - 1].data, task->lastfield.data, sizeof(struct xdag_field));
+	pthread_mutex_unlock((pthread_mutex_t*)g_ptr_share_mutex);
+
+	return 1;
+}
+
+int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time)
+{
+	uint64_t taskIndex = g_xdag_pool_task_index + 1;
+	struct xdag_pool_task *task = &g_xdag_pool_task[taskIndex & 1];
+
+	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
+
+	//TODO:use key from pool task
+	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
+	xdag_hash_t fixed_key_hash;
+	xdag_address2hash(fixed_key,fixed_key_hash);
+
+	task->task_time = MAIN_TIME(send_time);
+	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),task->task[0].data);
+	memcpy(task->task[1].data, fixed_key_hash, sizeof(fixed_key_hash)); //TODO:copy randomx key to task[1].data
+
+	g_xdag_pool_task_index = taskIndex;
+
+	while(xdag_get_xtimestamp() <= send_time) {
+		sleep(1);
+		pthread_mutex_lock(&g_create_block_mutex);
+		struct block_internal *pretop_new = pretop_block();
 		pthread_mutex_unlock(&g_create_block_mutex);
 		if(*pretop != pretop_new && xdag_get_xtimestamp() < send_time) {
 			*pretop = pretop_new;

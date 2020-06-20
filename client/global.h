@@ -45,6 +45,11 @@ enum xdag_type {
 	XDAG_POOL = 2
 };
 
+enum xdag_mine_type {
+	XDAG_RAW = 1,
+	XDAG_RANDOMX = 2
+};
+
 // defines if xdag started as a pool or a wallet
 extern enum xdag_type g_xdag_type;
 
@@ -63,7 +68,10 @@ extern char *g_coinname, *g_progname;
 //defines if mining is disabled (pool)
 extern int g_disable_mining;
 
-extern xd_rsdb_t* g_xdag_rsdb;
+//defines mine type for test
+extern enum xdag_mine_type g_xdag_mine_type;
+
+extern xd_rsdb_t *g_xdag_rsdb;
 
 extern xdag_hash_t g_top_main_chain_hash;
 extern xdag_hash_t g_pre_top_main_chain_hash;

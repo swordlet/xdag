@@ -34,6 +34,7 @@ include(cmake/RocksDBConfig.cmake)
 include(cmake/Secp256k1Config.cmake)
 include(cmake/OpenSSLConfig.cmake)
 include(cmake/TCMallocConfig.cmake)
+include(cmake/RandomXConfig.cmake)
 #[2]end
 
 #[3]download and compile projects in hunter
@@ -65,11 +66,11 @@ else()
   message(FATAL_ERROR "Failed to find TCMalloc dependency!")
 endif()
 
-find_package(TCMalloc CONFIG)
-if(TCMALLOC_FOUND)
-  message("-- Found TCMalloc: include ${TCMALLOC_INCLUDE_DIR}  libraries ${TCMALLOC_LIBRARY} ${PROFILER_LIBRARY}")
+find_package(RandomX CONFIG)
+if(RANDOMX_FOUND)
+  message("-- Found RandomX: include ${RandomX_INCLUDE_DIR}  libraries ${RandomX_LIBRARY}")
 else()
-  message(FATAL_ERROR "Failed to find TCMalloc dependency!")
+  message(FATAL_ERROR "Failed to find RandomX dependency!")
 endif()
 #[3]end
 
@@ -87,6 +88,7 @@ include_directories(${RocksDB_INCLUDE_DIR})
 #[6]add source file start
 file(GLOB_RECURSE DAGGER_SOURCES
         client/*.c
+        client/*.cpp
         dfslib/*.c
         dnet/*.c
         ldus/*.c
@@ -149,6 +151,7 @@ target_include_directories(
         ${SECP256K1_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
         ${TCMALLOC_INCLUDE_DIR}
+        ${RandomX_INCLUDE_DIR}
 )
 target_link_libraries(
         ${PROJECT_NAME}
@@ -160,6 +163,7 @@ target_link_libraries(
         ${OPENSSL_CRYPTO_LIBRARY}
         ${TCMALLOC_LIBRARY}
         ${PROFILER_LIBRARY}
+        ${RandomX_LIBRARY}
         m
 	    dl
 )

@@ -23,6 +23,8 @@ extern int xdag_initialize_miner(const char *pool_address);
 
 extern void *miner_net_thread(void *arg);
 
+extern void *rx_miner_net_thread(void *arg);
+
 /* send block to network via pool */
 extern int xdag_send_block_via_pool(struct xdag_block *block);
 
