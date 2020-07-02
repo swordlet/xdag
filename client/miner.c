@@ -51,8 +51,8 @@ int g_xdag_mining_threads = 0;
 
 static int g_socket = -1, g_stop_mining = 1;
 
-randomx_cache *rx_cache = NULL;
-randomx_dataset *rx_mine_dataset = NULL;
+//randomx_cache *rx_cache = NULL;
+//randomx_dataset *rx_mine_dataset = NULL;
 
 
 static int can_send_share(time_t current_time, time_t task_time, time_t share_time)
@@ -478,27 +478,29 @@ void *rx_miner_net_thread(void *arg)
 				} else if(maxndata == 2 * sizeof(struct xdag_field)) {
 					const uint64_t task_index = g_xdag_pool_task_index + 1;
 					struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-
+                    xdag_info("### new task ###");
 					task->task_time = xdag_get_frame();
 					memcpy(task->task[0].data,data[0].data, sizeof(xdag_hash_t));
 					memcpy(task->task[1].data,data[1].data,sizeof(xdag_hash_t));
 
-					xdag_info("receive pre hash %llu%llu%llu%llu",data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
-					xdag_info("receive rx key %llu%llu%llu%llu",data[1].data[0],data[1].data[1],data[1].data[2],data[1].data[3]);
-					xdag_info("copy our block hash %llu%llu%llu%llu to lastfield data",hash[0],hash[1],hash[2],hash[3]);
+					xdag_info("### receive pre hash %016llx%016llx%016llx%016llx",data[0].data[0],data[0].data[1],data[0].data[2],data[0].data[3]);
+					xdag_info("### receive rx key %016llx%016llx%016llx%016llx",data[1].data[0],data[1].data[1],data[1].data[2],data[1].data[3]);
+					xdag_info("copy our block hash %016llx%016llx%016llx%016llx to lastfield data",hash[0],hash[1],hash[2],hash[3]);
 					GetRandBytes(task->nonce.data, sizeof(xdag_hash_t));
 					memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
 					memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
 
-					xdag_rx_mine_first_hash(task->task[1].data,sizeof(task->task[1].data),
-							task->task[0].data,&task->lastfield,&task->lastfield.amount,task->minhash.data);
+//					xdag_rx_mine_first_hash(task->task[1].data,sizeof(task->task[1].data),
+//							task->task[0].data,&task->lastfield,&task->lastfield.amount,task->minhash.data);
 
-					xdag_info("task minhash first %016llx%016llx%016llx%016llx",
-					          task->minhash.data[0],task->minhash.data[1],task->minhash.data[2],task->minhash.data[3]);
+					memset(task->minhash.data, 0xff, sizeof(xdag_hash_t));
+
+//					xdag_info("task minhash first %016llx%016llx%016llx%016llx",
+//					          task->minhash.data[0],task->minhash.data[1],task->minhash.data[2],task->minhash.data[3]);
 					g_xdag_pool_task_index = task_index;
 					task_time = time(0);
 
-					xdag_info("rx mine task  : t=%llx N=%llu", task->task_time << 16 | 0xffff, task_index);
+					xdag_info("## rx mine task  : t=%llx N=%llu", task->task_time << 16 | 0xffff, task_index);
 
 					ndata = 0;
 					maxndata = sizeof(struct xdag_field);
@@ -510,22 +512,26 @@ void *rx_miner_net_thread(void *arg)
 
 		if(p.revents & POLLOUT) {
 
-				const uint64_t task_index = g_xdag_pool_task_index;
-				struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-				uint64_t *h = task->minhash.data;
+            const uint64_t task_index = g_xdag_pool_task_index;
+            struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
+            uint64_t *h = task->minhash.data;
+            if(task->minhash.amount + 1 != 0) { // min hash is not  0xffffffffff....
+                share_time = time(0);
+                res = send_to_pool(&task->lastfield, 1);
+                pthread_mutex_unlock(&g_miner_mutex);
 
-				share_time = time(0);
-				res = send_to_pool(&task->lastfield, 1);
-				pthread_mutex_unlock(&g_miner_mutex);
+                uint64_t *d = (uint64_t *) &task->lastfield;
+                xdag_info("Sent lastfield data %016llx%016llx%016llx%016llx", d[0], d[1], d[2], d[3]);
+                xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
+                          h[0], h[1], h[2], h[3], task->task_time << 16 | 0xffff, res);
 
-				uint64_t *d=(uint64_t *)&task->lastfield;
-				xdag_info("Sent lastfield data %llu%llu%llu%llu",d[0],d[1],d[2],d[3]);
-				xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
-				          h[3], h[2], h[1], h[0], task->task_time << 16 | 0xffff, res);
-
-				if(res) {
-					mess = "write error on socket"; goto err;
-				}
+                if (res) {
+                    mess = "write error on socket";
+                    goto err;
+                }
+            } else {
+                pthread_mutex_unlock(&g_miner_mutex);
+            }
 		} else {
 			pthread_mutex_unlock(&g_miner_mutex);
 		}
@@ -587,7 +593,7 @@ static void *mining_thread(void *arg)
 	return 0;
 }
 
-void *rx_mining_thread(void *arg)
+static void *rx_mining_thread(void *arg)
 {
 	xdag_hash_t hash;
 	struct xdag_field last;
@@ -614,12 +620,14 @@ void *rx_mining_thread(void *arg)
 			oldntask = ntask;
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
 			nonce = last.amount;
+            xdag_info("### new pre hash to slow hash %016llx%016llx%016llx%016llx",task->task[0].data[0],
+                    task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
 		}
-		last.amount = xdag_rx_mine_slow_hash((uint32_t)(nthread-1),task->task[0].data, &last, &nonce, 1024,hash);
+		last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 1024,nthread,hash);
 
 		g_xdag_extstats.nhashes += 1024;
-		xd_rsdb_put_extstats();
 		xdag_set_min_share(task, last.data, hash);
+		xd_rsdb_put_extstats();
 	}
 
 	return 0;
@@ -651,7 +659,7 @@ int xdag_mining_start(int n_mining_threads)
 		xdag_hash_t fixed_key_hash;
 		xdag_address2hash(fixed_key,fixed_key_hash);
 		rx_mine_init_seed(fixed_key_hash, sizeof(fixed_key_hash),n_mining_threads);
-		rx_mine_alloc_vms(n_mining_threads);
+//		rx_mine_alloc_vms(n_mining_threads);
 	}
 
 	while(g_xdag_mining_threads < n_mining_threads) {

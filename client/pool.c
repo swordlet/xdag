@@ -139,7 +139,6 @@ struct payment_data {
 
 xdag_hash_t g_xdag_mined_hashes[CONFIRMATIONS_COUNT];
 xdag_hash_t g_xdag_mined_nonce[CONFIRMATIONS_COUNT];
-xdag_hash_t g_fixed_rx_seed;
 xdag_remark_t g_pool_tag = {0};
 int g_pool_has_tag = 0;
 
@@ -148,6 +147,7 @@ static uint32_t g_connections_per_miner_limit = DEFAUL_CONNECTIONS_PER_MINER_LIM
 static uint32_t g_connections_count = 0;
 static double g_pool_fee = 0, g_pool_reward = 0, g_pool_direct = 0, g_pool_fund = 0;
 static struct xdag_block *g_firstb = 0, *g_lastb = 0;
+static xdag_hash_t g_fixed_pool_seed;
 
 static int g_stop_general_mining = 1;
 extern int g_block_production_on;
@@ -177,6 +177,7 @@ static inline void thread_finish_routine(void *);
 void *general_mining_thread(void *arg);
 void *pool_net_thread(void *arg);
 void *pool_main_thread(void *arg);
+void *pool_rx_main_thread(void *arg);
 void *pool_block_thread(void *arg);
 void *pool_remove_inactive_connections(void *arg);
 void *pool_payment_thread(void *arg);
@@ -190,10 +191,12 @@ int xdag_initialize_pool(const char *pool_arg)
 
 	if(g_xdag_mine_type == XDAG_RANDOMX){
 		//TODO:use key base on rx seed height
-		xdag_mess("Pool init randomx paramters");
+		xdag_mess("pool init seed");
 		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-		xdag_address2hash(fixed_key,g_fixed_rx_seed);
-		rx_pool_init_seed(g_fixed_rx_seed,sizeof(g_fixed_rx_seed));
+		xdag_address2hash(fixed_key, g_fixed_pool_seed);
+		rx_pool_init_seed(g_fixed_pool_seed, sizeof(g_fixed_pool_seed));
+		xdag_info("*** xdag init fixed seed %016llx%016llx%016llx%016llx",
+		          g_fixed_pool_seed[0],g_fixed_pool_seed[1],g_fixed_pool_seed[2],g_fixed_pool_seed[3]);
 	}
 
 	memset(&g_pool_miner, 0, sizeof(struct miner_pool_data));
@@ -896,12 +899,16 @@ static int process_received_share(connection_list_element *connection)
 			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
 			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));
-
-			rx_pool_calc_hash(g_fixed_rx_seed,sizeof(g_fixed_rx_seed),rx_task_data, sizeof(rx_task_data), hash);
 			uint64_t *d=(uint64_t*)conn_data->data;
-			xdag_info("get rx task pre hash %llu%llu%llu%llu from miner",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
-			xdag_info("get last field data %llu%llu%llu%llu from miner",d[0],d[1],d[2],d[3]);
-			xdag_info("get rx share hash %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
+//			uint64_t *td=(uint64_t*)rx_task_data;
+
+			rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
+			//xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
+			xdag_info("#*# rx pre %016llx%016llx%016llx%016llx from task",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
+			xdag_info("#*# rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
+//			xdag_info("rx task data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
+//					td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
+			xdag_info("#*# rx share %016llx%016llx%016llx%016llx from verify",hash[0],hash[1],hash[2],hash[3]);
 		}else{
 			xdag_hash_final(task->ctx0, conn_data->data, sizeof(struct xdag_field), hash);
 		}
