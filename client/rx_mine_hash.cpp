@@ -555,7 +555,7 @@ uint64_t xdag_rx_mine_worker_hash(xdag_hash_t pre_hash, xdag_hash_t last_field ,
     randomx_destroy_vm(vm);
 
     xdag_info("*#*# rx final min hash %016llx%016llx%016llx%016llx",
-              output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
+              output_hash[3],output_hash[2],output_hash[1],output_hash[0]);
     xdag_info("*#*# rx final min nonce %016llx",min_nonce);
 
     return min_nonce;

@@ -1199,8 +1199,8 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),task->task[0].data);
 	memcpy(task->task[1].data, fixed_key_hash, sizeof(fixed_key_hash)); //TODO:copy randomx key to task[1].data
     g_xdag_pool_task_index = taskIndex;
-	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx",task->task[0].data[0],
-            task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
+	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx",task->task[0].data[3],
+            task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
 //    rx_pool_init_seed(fixed_key_hash, sizeof(fixed_key_hash));
 
 	while(xdag_get_xtimestamp() <= send_time) {

@@ -7,6 +7,8 @@ build/
 .idea/
 cmake-build-debug/
 cmake-build-release/
+cmake-build-remote-debug/
+cmake-build-remote-release/
 
 /win/xdag.VC.db
 /win/xdag.VC.VC.opendb

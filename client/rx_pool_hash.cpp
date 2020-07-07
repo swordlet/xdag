@@ -112,11 +112,11 @@ int rx_pool_init_seed(void *seed_data, size_t seed_size)
 		xdag_info("pool seed changed reinit pool rx paramters");
 		memcpy(g_current_pool_seed,seed_data,sizeof(g_current_pool_seed));
 		xdag_info("pool seed reinited %016llx%016llx%016llx%016llx not changed",
-		          g_current_pool_seed[0],g_current_pool_seed[1],g_current_pool_seed[2],g_current_pool_seed[3]);
+		          g_current_pool_seed[3],g_current_pool_seed[2],g_current_pool_seed[1],g_current_pool_seed[0]);
 		toggled = true;
 	} else{
 		xdag_info("pool seed %016llx%016llx%016llx%016llx not changed",
-		          g_current_pool_seed[0],g_current_pool_seed[1],g_current_pool_seed[2],g_current_pool_seed[3]);
+		          g_current_pool_seed[3],g_current_pool_seed[2],g_current_pool_seed[1],g_current_pool_seed[0]);
 		pthread_mutex_unlock(&g_rx_init_mutex);
 		return 0;
 	}

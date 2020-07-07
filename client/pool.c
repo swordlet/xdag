@@ -196,7 +196,7 @@ int xdag_initialize_pool(const char *pool_arg)
 		xdag_address2hash(fixed_key, g_fixed_pool_seed);
 		rx_pool_init_seed(g_fixed_pool_seed, sizeof(g_fixed_pool_seed));
 		xdag_info("*** xdag init fixed seed %016llx%016llx%016llx%016llx",
-		          g_fixed_pool_seed[0],g_fixed_pool_seed[1],g_fixed_pool_seed[2],g_fixed_pool_seed[3]);
+		          g_fixed_pool_seed[3],g_fixed_pool_seed[2],g_fixed_pool_seed[1],g_fixed_pool_seed[0]);
 	}
 
 	memset(&g_pool_miner, 0, sizeof(struct miner_pool_data));
@@ -904,11 +904,11 @@ static int process_received_share(connection_list_element *connection)
 
 			rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
 			//xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
-			xdag_info("#*# rx pre %016llx%016llx%016llx%016llx from task",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
-			xdag_info("#*# rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
+			xdag_info("#*# rx pre %016llx%016llx%016llx%016llx from task",task->task[0].data[3],task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
+			xdag_info("#*# rx lastfield %016llx%016llx%016llx%016llx from miner",d[3],d[2],d[1],d[0]);
 //			xdag_info("rx task data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
 //					td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
-			xdag_info("#*# rx share %016llx%016llx%016llx%016llx from verify",hash[0],hash[1],hash[2],hash[3]);
+			xdag_info("#*# rx share %016llx%016llx%016llx%016llx from verify",hash[3],hash[2],hash[1],hash[0]);
 		}else{
 			xdag_hash_final(task->ctx0, conn_data->data, sizeof(struct xdag_field), hash);
 		}
