@@ -219,6 +219,34 @@ int get_rx_latest_task(rx_pool_task *task){
 	return 0;
 }
 
+int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed_count){
+	pthread_mutex_lock(&cache_mutex);
+
+	if(task_deque.empty() || task_map.empty()){
+		xdag_info("rx task cache: deque or task info map empty");
+		*filed_count=0;
+		pthread_mutex_unlock(&cache_mutex);
+		return -1;
+	}
+
+	int pos=0;
+	for(auto it_prehash=task_deque.begin();it_prehash!= task_deque.end();it_prehash++){
+		auto it_info=task_map.find(*it_prehash);
+		if(it_info != task_map.end()){
+			rx_pool_task task=it_info->second;
+			if(task.seqno > seqno){
+				memcpy(fields[pos].data,task.prehash,sizeof(xdag_hash_t));
+				memcpy(fields[pos+1].data,task.seed,sizeof(xdag_hash_t));
+				pos+=2;
+				*filed_count+=2;
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&cache_mutex);
+	return 0;
+}
+
 /**
  * traverse the task queue from begin to end
  * and print the task info in map
@@ -235,7 +263,6 @@ void printf_all_rx_tasks(){
 			std::cout << "\tlastfield: " << hash2hex(itv->second.lastfield);
 			std::cout << "\tnonce1: " << itv->second.nonce0;
 			std::cout << "\tfirst hashed: " << itv->second.hashed;
-
 		}
 		std::cout << std::endl;
 	}

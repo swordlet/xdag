@@ -312,9 +312,13 @@ void *rx_miner_net_thread(void *arg){
 					//task is hashed and not discard by all thread
 					if(rt.hashed && rt.discards < g_rx_mining_threads){
 						xdag_info("rx task %016llx%016llx%016llx%016llx hashed %d discards %d",i,rt.prehash,rt.discards);
-						struct xdag_field fld;
-						memcpy(fld.data, rt.lastfield, sizeof(xdag_hash_t));
-						res = rx_send_to_pool(&fld, 1);
+						struct xdag_field fld[RX_POW_BLOCK_FIELDS];
+						struct rx_pow_block pow;
+
+						memcpy(fld[1].data, rt.prehash, sizeof(xdag_hash_t));
+						memcpy(fld[2].data, rt.seed, sizeof(xdag_hash_t));
+						memcpy(fld[3].data, rt.lastfield, sizeof(xdag_hash_t));
+						res = rx_send_to_pool(fld, RX_POW_BLOCK_FIELDS);
 						if(res) {
 							mess = "write error on socket"; goto err;
 						}
@@ -322,9 +326,9 @@ void *rx_miner_net_thread(void *arg){
 								g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
 						xdag_info("share pre %016llx%016llx%016llx%016llx",
 								rt.prehash[0], rt.prehash[1], rt.prehash[2], rt.prehash[3]);
-						xdag_info("share lastfield data %016llx%016llx%016llx%016llx",
+						xdag_info("share last %016llx%016llx%016llx%016llx",
 								rt.lastfield[0],rt.lastfield[1],rt.lastfield[2],rt.lastfield[3]);
-						xdag_info("share minhash: %016llx%016llx%016llx%016llx t=%llx res=%d",
+						xdag_info("share hash: %016llx%016llx%016llx%016llx t=%llx res=%d",
 								rt.minhash[0], rt.minhash[1], rt.minhash[2], rt.minhash[3], rt.task_time << 16 | 0xffff, res);
 					}
 				}
@@ -518,12 +522,12 @@ static int rx_send_to_pool(struct xdag_field *fld, int nfld)
 	}
 
 	// send rx pow to rx pool
-//	if(nfld == RX_POW_FIELDS){
-//		f[0].transport_header = 0;
-//		f[0].transport_header = RX_POW_HEADER_WORD;
-//		uint32_t crc = crc_of_array((uint8_t*)f, sizeof(struct xdag_field)*RX_POW_FIELDS);
-//		f[0].transport_header |= (uint64_t)crc << 32;
-//	}
+	if(nfld == RX_POW_BLOCK_FIELDS){
+		f[0].transport_header = 0;
+		f[0].transport_header = RX_POW_HEADER_WORD;
+		uint32_t crc = crc_of_array((uint8_t*)f, sizeof(struct xdag_field)*RX_POW_BLOCK_FIELDS);
+		f[0].transport_header |= (uint64_t)crc << 32;
+	}
 
 	for(int i = 0; i < nfld; ++i) {
 		dfslib_encrypt_array(g_crypt, (uint32_t*)(f + i), DATA_SIZE, m->nfield_out++);

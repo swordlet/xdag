@@ -223,68 +223,6 @@ void xdag_rx_pre_hash(void *data, size_t size, xdag_hash_t hash)
 	sha256_final(&ctx, (uint8_t*)hash);
 }
 
-uint64_t xdag_rx_mine_first_hash(void* seed,size_t seed_size,const xdag_hash_t pre_hash,xdag_hash_t last_data , uint64_t nonce,xdag_hash_t output_hash){
-
-	uint64_t nonce_pos=0;
-	uint8_t data2hash[sizeof(xdag_hash_t)*2];
-	memcpy(data2hash,pre_hash,sizeof(xdag_hash_t));
-	memcpy(data2hash+sizeof(xdag_hash_t),last_data,sizeof(xdag_hashlow_t));
-	nonce_pos=sizeof(xdag_hash_t)+sizeof(xdag_hashlow_t);
-	memcpy(data2hash+nonce_pos,&nonce,sizeof(uint64_t));
-	rx_mine_calc_first_hash(seed,seed_size,data2hash, sizeof(data2hash), output_hash);
-
-	return nonce;
-}
-
-//uint64_t xdag_rx_mine_slow_hash0(uint32_t thread_index, const xdag_hash_t pre_hash, xdag_hash_t last_data, uint64_t nonce,
-//                                 uint64_t attemps, xdag_hash_t output_hash){
-//	int nonce_pos=0;
-//	xdag_hash_t hash0;
-//	uint64_t nonce0=nonce;
-//	uint64_t min_nonce;
-//
-//	uint8_t data2hash[sizeof(xdag_hash_t)*2];
-//	memcpy(data2hash,pre_hash,sizeof(xdag_hash_t));
-//	memcpy(data2hash+sizeof(xdag_hash_t),last_data,sizeof(xdag_hashlow_t));
-//
-//	nonce0 += thread_index * attemps;
-//	min_nonce=nonce0;
-//	nonce_pos = sizeof(xdag_hash_t) + sizeof(xdag_hashlow_t);
-//
-//	//calculate first hash to output_hash
-//	memcpy(data2hash+nonce_pos,&nonce0,sizeof(uint64_t));
-//	rx_mine_hash(thread_index,data2hash, sizeof(data2hash), output_hash);
-//
-//	//try attemps-1 times to find min hash
-//	for(int i=0;i < attemps-1;i++)
-//	{
-//		memcpy(data2hash+nonce_pos,&nonce0,sizeof(uint64_t));
-//		rx_mine_hash(thread_index,data2hash, sizeof(data2hash), hash0);
-//		if(xdag_cmphash(hash0,output_hash) < 0)
-//		{
-//			memcpy(output_hash, hash0, sizeof(xdag_hash_t));
-//			min_nonce = nonce0;
-//		}
-//		nonce0+=1;
-//	}
-//
-//	last_data[3]=min_nonce;
-//	memcpy(data2hash,pre_hash,sizeof(xdag_hash_t));
-//	memcpy(data2hash+sizeof(xdag_hash_t),last_data,sizeof(xdag_hash_t));
-//
-//	uint64_t *td=(uint64_t*)data2hash;
-//	rx_mine_hash(thread_index,data2hash, sizeof(data2hash), output_hash);
-//
-//	xdag_info("rx pre %016llx%016llx%016llx%016llx",pre_hash[0],pre_hash[1],pre_hash[2],pre_hash[3]);
-//	xdag_info("rx last data %016llx%016llx%016llx%016llx",last_data[0],last_data[1],last_data[2],last_data[3]);
-//	xdag_info("rx final %016llx%016llx%016llx%016llx",output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
-//	xdag_info("rx data2 %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
-//	          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
-//	xdag_info("rx final nonce %016llx",min_nonce);
-//
-//	return min_nonce;
-//}
-
 uint64_t xdag_rx_mine_slow_hash(uint32_t thread_index,void *task,uint64_t *nonce,uint32_t steps,
                                  uint64_t attemps, xdag_hash_t output_hash){
 	int nonce_pos=0;

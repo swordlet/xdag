@@ -20,7 +20,6 @@ void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next
 	*next_height = rx_seedheight(height + SEEDHASH_EPOCH_LAG_0);
 }
 
-
 int main(int argc,char* argv[])
 {
 	int h0=10;

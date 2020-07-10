@@ -18,6 +18,7 @@
 #include "pool.h"
 #include "miner.h"
 #include "rx_miner.h"
+#include "rx_mine_cache.h"
 #include "address.h"
 #include "commands.h"
 #include "utils/utils.h"
@@ -1186,9 +1187,6 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 
 int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time)
 {
-	uint64_t taskIndex = g_xdag_pool_task_index + 1;
-	struct xdag_pool_task *task = &g_xdag_pool_task[taskIndex & 1];
-
 	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
 
 	//TODO:use key from pool task
@@ -1196,11 +1194,13 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	xdag_hash_t fixed_key_hash;
 	xdag_address2hash(fixed_key,fixed_key_hash);
 
-	task->task_time = MAIN_TIME(send_time);
-	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),task->task[0].data);
-	memcpy(task->task[1].data, fixed_key_hash, sizeof(fixed_key_hash)); //TODO:copy randomx key to task[1].data
-
-	g_xdag_pool_task_index = taskIndex;
+	//enqueue rx task
+	rx_pool_task rx_task;
+	rx_task.task_time = TASK_TIME(send_time);
+	rx_task.seqno = g_xdag_rx_task_seq++;
+	memcpy(rx_task.seed,fixed_key_hash,sizeof(fixed_key_hash));
+	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_task.prehash);
+	enqueue_rx_task(rx_task);
 
 	while(xdag_get_xtimestamp() <= send_time) {
 		sleep(1);
@@ -1213,10 +1213,6 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 			return 0;
 		}
 	}
-
-	pthread_mutex_lock((pthread_mutex_t*)g_ptr_share_mutex);
-	memcpy(block[0].field[XDAG_BLOCK_FIELDS - 1].data, task->lastfield.data, sizeof(struct xdag_field));
-	pthread_mutex_unlock((pthread_mutex_t*)g_ptr_share_mutex);
 
 	return 1;
 }

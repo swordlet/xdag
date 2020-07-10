@@ -26,6 +26,7 @@ struct xdag_pool_task {
 typedef struct tag_rx_pool_task{
 	atomic_bool hashed;           //task is first hashed with random nonce
 	atomic_int discards;          //task discard count if task discard count >= mining threads,task will be discard
+	uint64_t seqno;               //task seqno
 	uint64_t discard_flag;        //discard flags
 	uint64_t nonce0;              //first random nonce
 	xdag_hash_t prehash;          //pre hash
@@ -41,6 +42,7 @@ extern "C" {
 
 extern struct xdag_pool_task g_xdag_pool_task[2];
 extern uint64_t g_xdag_pool_task_index; /* global variables are instantiated with 0 */
+extern uint64_t g_xdag_rx_task_seq;     /* global latest rx task seq instantiated with 0 */
 
 /* poiter to mutex for optimal share  */
 extern void *g_ptr_share_mutex;

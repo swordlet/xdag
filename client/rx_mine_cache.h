@@ -28,6 +28,8 @@ extern int get_rx_latest_prehash(xdag_hash_t prehash);
 
 extern int get_rx_latest_task(rx_pool_task *task);
 
+extern int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed_count);
+
 extern void printf_all_rx_tasks();
 
 #ifdef __cplusplus

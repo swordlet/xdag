@@ -76,6 +76,7 @@ target_link_libraries(test_rx_seedheight
 
 add_executable(hex_util
         hex_util.cpp)
+
 include_directories(hex_util
         ${GTEST_INCLUDE_DIR}
         ${XDAG_CORE_INCLUDE_DIR}
@@ -87,7 +88,6 @@ target_link_libraries(hex_util
         ${UTILS_LIBRARY}
         ${XDAG_CORE_LIBRARY}
         )
-
 
 if(RUN_TEST)
     #run randomx-test after build

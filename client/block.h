@@ -52,11 +52,12 @@ enum bi_flags {
 };
 
 #define XDAG_BLOCK_FIELDS            16
+#define RX_POW_BLOCK_FIELDS          4
 #define REMARK_ENABLED               1
 #define MAX_WAITING_MAIN             1
 #define MAIN_START_AMOUNT            (1ll << 42)
 #define MAIN_APOLLO_AMOUNT           (1ll << 39)
-#define RX_POW_FIELDS                 3
+
 // nmain = 976487, hash is WENN9ZgvXA+vNaslRLFQPgBKIbJVaMsu
 //                         at 2019-12-30 18:01:35 UTC
 //                         get this info from https://explorer.xdag.io/
@@ -99,6 +100,10 @@ struct xdag_field {
 
 struct xdag_block {
 	struct xdag_field field[XDAG_BLOCK_FIELDS];
+};
+
+struct rx_pow_block {
+	struct xdag_field field[RX_POW_BLOCK_FIELDS];
 };
 
 struct block_backrefs;

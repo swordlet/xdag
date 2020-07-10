@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -25,8 +24,6 @@ extern int rx_mine_alloc_vms(uint32_t mining_thread_count);
 
 //free the resource of randomx
 extern void rx_mine_free();
-
-extern int rx_mine_calc_first_hash(void *seed_data, size_t seed_size,void* data,size_t data_size,void* output_hash);
 
 extern uint64_t* get_current_rx_seed();
 

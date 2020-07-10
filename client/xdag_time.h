@@ -14,6 +14,7 @@
 #define DEF_TIME_LIMIT          0 // (MAIN_CHAIN_PERIOD / 2)
 #define MAIN_CHAIN_PERIOD       (64 << 10)
 #define MAIN_TIME(t)            ((t) >> 16)
+#define TASK_TIME(t)            ((t) >> 10)
 #define XDAG_TEST_ERA           0x16900000000ll
 #define XDAG_MAIN_ERA           0x16940000000ll
 #define XDAG_ERA                g_xdag_era

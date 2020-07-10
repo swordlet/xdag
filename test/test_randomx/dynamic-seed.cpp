@@ -283,7 +283,7 @@ void* mine(randomx_vm *vm, int nonces_count, int thread_no,uint32_t startItem,ui
 	uint8_t output_hash[RANDOMX_HASH_SIZE];
 
 	while(nonces_count-- > 0){
-		randomx_calculate_hash(priv_vm,g_dynamic_seed.c_str(),strlen(g_dynamic_seed.c_str()),output_hash);
+		randomx_calculate_hash(priv_vm, g_dynamic_seed.c_str(), strlen(g_dynamic_seed.c_str()), output_hash);
 		pthread_mutex_lock(&g_log_mutex);
 		std::cout << "rx calc thread " << thread_no << " " << hash2hex(output_hash) << std::endl;
 		pthread_mutex_unlock(&g_log_mutex);
