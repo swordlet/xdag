@@ -135,7 +135,6 @@ int enqueue_rx_task(rx_pool_task t){
 	pthread_mutex_lock(&cache_mutex);
 
 	std::string prehex=hash2hex(t.prehash);
-
 	if(task_deque.size() >= RX_MAX_CACHE_TASK_SIZE){
 		while(task_deque.size() >= RX_MAX_CACHE_TASK_SIZE){
 			std::string front_hash=task_deque.front();
@@ -251,7 +250,7 @@ int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed
  * traverse the task queue from begin to end
  * and print the task info in map
  * */
-void printf_all_rx_tasks(){
+void printf_miner_rx_tasks(){
 	pthread_mutex_lock(&cache_mutex);
 	for(auto it=task_deque.begin();it!=task_deque.end();it++){
 		//std::cout << "pre : " << *it;
@@ -263,6 +262,25 @@ void printf_all_rx_tasks(){
 			std::cout << "\tlastfield: " << hash2hex(itv->second.lastfield);
 			std::cout << "\tnonce1: " << itv->second.nonce0;
 			std::cout << "\tfirst hashed: " << itv->second.hashed;
+		}
+		std::cout << std::endl;
+	}
+	pthread_mutex_unlock(&cache_mutex);
+}
+
+/**
+ * traverse the task queue from begin to end
+ * and print the task info in map
+ * */
+void printf_pool_rx_tasks(){
+	pthread_mutex_lock(&cache_mutex);
+	for(auto it=task_deque.begin();it!=task_deque.end();it++){
+		//std::cout << "pre : " << *it;
+		auto itv=task_map.find(*it);
+		if(itv != task_map.end()){
+			std::cout << "\ttime: " << itv->second.task_time;
+			std::cout << "\tpre : " << hash2hex(itv->second.prehash);
+			std::cout << "\tseed : " << hash2hex(itv->second.seed);
 		}
 		std::cout << std::endl;
 	}

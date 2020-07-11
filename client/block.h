@@ -102,6 +102,13 @@ struct xdag_block {
 	struct xdag_field field[XDAG_BLOCK_FIELDS];
 };
 
+/*
+ * rx pow with 4 fields
+ * 0: header field
+ * 1: prehash
+ * 2: seed
+ * 3: lastfield
+ * */
 struct rx_pow_block {
 	struct xdag_field field[RX_POW_BLOCK_FIELDS];
 };

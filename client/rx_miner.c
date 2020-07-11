@@ -288,6 +288,7 @@ void *rx_miner_net_thread(void *arg){
 					memcpy(rt.prehash,data[0].data, sizeof(xdag_hash_t));
 					memcpy(rt.seed,data[1].data, sizeof(xdag_hash_t));
 					memcpy(rt.lastfield,hash,sizeof(xdag_hashlow_t));
+					memset(rt.minhash,0xff,sizeof(xdag_hash_t));
 					enqueue_rx_task(rt);
 
 					xdag_info("enqueue rx pre : %016llx%016llx%016llx%016llx",rt.prehash[0],rt.prehash[1],rt.prehash[2],rt.prehash[3]);
@@ -322,13 +323,13 @@ void *rx_miner_net_thread(void *arg){
 						if(res) {
 							mess = "write error on socket"; goto err;
 						}
-						xdag_info("share seed %016llx%016llx%016llx%016llx",
+						xdag_info("rx pow share pre %016llx%016llx%016llx%016llx",
+						          rt.prehash[0], rt.prehash[1], rt.prehash[2], rt.prehash[3]);
+						xdag_info("rx pow share seed %016llx%016llx%016llx%016llx",
 								g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
-						xdag_info("share pre %016llx%016llx%016llx%016llx",
-								rt.prehash[0], rt.prehash[1], rt.prehash[2], rt.prehash[3]);
-						xdag_info("share last %016llx%016llx%016llx%016llx",
+						xdag_info("rx pow share last %016llx%016llx%016llx%016llx",
 								rt.lastfield[0],rt.lastfield[1],rt.lastfield[2],rt.lastfield[3]);
-						xdag_info("share hash: %016llx%016llx%016llx%016llx t=%llx res=%d",
+						xdag_info("rx pow share hash: %016llx%016llx%016llx%016llx t=%llx res=%d",
 								rt.minhash[0], rt.minhash[1], rt.minhash[2], rt.minhash[3], rt.task_time << 16 | 0xffff, res);
 					}
 				}
@@ -478,25 +479,22 @@ static void *rx_mining_thread(void *arg)
 
 static void rx_update_task_min_hash(rx_pool_task task,xdag_hash_t hash){
 	xdag_info("rx update task min hash");
-	//pthread_mutex_lock(&g_update_min_mutex);
+	pthread_mutex_lock(&g_update_min_mutex);
 	if(!task.hashed){
 		task.hashed=true;
 		memcpy(task.minhash,hash,sizeof(xdag_hash_t));
 		update_rx_task_by_prehash(task.prehash,task);
-		xdag_info("rx update task min hash return 1");
-		//pthread_mutex_unlock(&g_update_min_mutex);
+		pthread_mutex_unlock(&g_update_min_mutex);
 		return;
 	}
 
 	if(xdag_cmphash(hash,task.minhash) < 0){
 		memcpy(task.minhash,hash,sizeof(xdag_hash_t));
 		update_rx_task_by_prehash(task.prehash,task);
-		//pthread_mutex_unlock(&g_update_min_mutex);
-		xdag_info("rx update task min hash return 2");
+		pthread_mutex_unlock(&g_update_min_mutex);
 		return;
 	}
-	xdag_info("rx update task min hash return 3");
-	//pthread_mutex_lock(&g_update_min_mutex);
+	pthread_mutex_unlock(&g_update_min_mutex);
 	return;
 }
 

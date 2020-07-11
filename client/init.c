@@ -252,15 +252,15 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 		} else if(ARG_EQUAL(argv[i], "-l", "")) { /* list balance */
 			return out_balances();
 		} else if(ARG_EQUAL(argv[i], "-f", "")) { /* configuration file */
-            if(parameters->pool_configuration.node_address != NULL || parameters->pool_configuration.mining_configuration != NULL) {
-                printUsage(argv[0]);
-                return 0;
-            }
-            const char *config_path = NULL;
-            if(i + 1 < argc && argv[i + 1] != NULL && argv[i + 1][0] != '-') {
-                config_path = argv[++i];
-            }
-            if(get_pool_config(config_path, &parameters->pool_configuration) < 0) return -1;
+      if(parameters->pool_configuration.node_address != NULL || parameters->pool_configuration.mining_configuration != NULL) {
+          printUsage(argv[0]);
+          return 0;
+      }
+      const char *config_path = NULL;
+      if(i + 1 < argc && argv[i + 1] != NULL && argv[i + 1][0] != '-') {
+          config_path = argv[++i];
+      }
+      if(get_pool_config(config_path, &parameters->pool_configuration) < 0) return -1;
     } else {
 			printUsage(argv[0]);
 			return 0;

@@ -185,7 +185,7 @@ static void *rx_pool_block_thread(void *arg);
 static void *rx_pool_remove_inactive_connections(void *arg);
 static void *rx_pool_payment_thread(void *arg);
 
-void rx_update_mean_log_diff(struct connection_pool_data *, struct xdag_pool_task *, xdag_hash_t);
+void rx_update_mean_log_diff(struct connection_pool_data *, uint64_t task_time, xdag_hash_t);
 
 /* initialization of the pool */
 int rx_initialize_pool(const char *pool_arg)
@@ -708,6 +708,78 @@ static void calculate_nopaid_shares(struct connection_pool_data *conn_data, stru
 	}
 }
 
+/* @method      :- calculate_nopaid_shares
++  @param       :-
++               struct connection_pool_data* connection data :- miner's side data
++               struct xdag_pool_task* task data             :- pool's side data
++               xdag_hash_t hash                             :- is a digest computed by the pool starting from the
++                                                            miner's data 'conn_data->data' and pool side context task->ctx0
++  @return      :- void
++  @description :- calculate nopaid share */
+
+static void rx_calculate_nopaid_shares(struct connection_pool_data *conn_data, uint64_t task_time, xdag_hash_t hash)
+{
+	if(conn_data->task_time <= task_time) { // At the beginning conn_data->task_time=0. conn_data->task_time > task_time isn't accepted.
+		double diff = ((uint64_t*)hash)[2];
+		int i = task_time & (CONFIRMATIONS_COUNT - 1);	// CONFIRMATION_COUNT-1=15d=1111b, thus it just cut task_time to its 4 least significant bit
+
+		// %%%%%% ldexp(double a, int b) -> ldexp(diff, -64) will return [diff/2^64] %%%%%%
+		// Since max value of diff is 0xFFFFFFFFFFFFFFFF (it is a 64bit unsigned integer variable)
+		// and 2^64 is 0xFFFFFFFFFFFFFFFF, ldexp(diff, -64) will return exactly 1 iff
+		// diff value is equal to 0xFFFFFFFFFFFFFFFF (can't be higher by definition).
+		// But because of the approximation from double to int
+		// even when diff is "around" 0xFFFFFFFFFFFFFFFF diff will be 1.
+		// Test: for diff >= FFFFFFFFFFFFFC00 (18446744073709550592) ldexp(diff, -64)=1
+		// Test: for diff <= FFFFFFFFFFFFFBFF (18446744073709550591) ldexp(diff, -64)=0
+		// Still need to investigate the purpose of using ldexp function to do it.
+
+		// %%%%%% 		diff += ((uint64_t*)hash)[3];			     %%%%%%
+		// Given that hash[3] is the most significant part of the 256 bit number
+		// hash[3] || hash[2] || hash[1] || hash[0]
+		// If, as explained previously, hash[2] is near its possible maximum value
+		// then diff will be equal to hash[3]+1.
+
+		// %%%%%% 		           diff 			     %%%%%%
+		// At this point, diff, seems to be a condensate approximated representation
+		// of the 256 bit number hash[3] || hash[2] || hash[1] || hash[0].
+
+		diff = ldexp(diff, -64);
+		diff += ((uint64_t*)hash)[3];
+
+		if(diff < 1) diff = 1;
+		diff = 46 - log(diff);
+
+		// Adding share for connection
+		if(conn_data->task_time < task_time) { // conn_data->task_time will keep old value until pool doesn't accept the share of the task.
+			conn_data->task_time = task_time;  // this will prevent to count more share for the same task, cannot join this block a new time for same task.
+
+			if(conn_data->maxdiff[i] > 0) {
+				conn_data->prev_diff += conn_data->maxdiff[i];
+				conn_data->prev_diff_count++;
+			}
+
+			conn_data->maxdiff[i] = diff;
+			// share already counted, but we will update the maxdiff so the most difficult share will be counted.
+		} else if(diff > conn_data->maxdiff[i]) {
+			conn_data->maxdiff[i] = diff;
+		}
+
+		// Adding share for miner
+		if(conn_data->miner->task_time < task_time) {
+			conn_data->miner->task_time = task_time;
+
+			if(conn_data->miner->maxdiff[i] > 0) {
+				conn_data->miner->prev_diff += conn_data->miner->maxdiff[i];
+				conn_data->miner->prev_diff_count++;
+			}
+
+			conn_data->miner->maxdiff[i] = diff;
+		} else if(diff > conn_data->miner->maxdiff[i]) {
+			conn_data->miner->maxdiff[i] = diff;
+		}
+	}
+}
+
 static int register_new_miner(connection_list_element *connection)
 {
 	miner_list_element *elt;
@@ -795,34 +867,43 @@ static int share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t shar
 	return 1;
 }
 
-static int rx_share_can_be_accepted(struct miner_pool_data *miner, struct rx_pow_block rx_pow, uint64_t task_index)
+static int rx_share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t prehash,
+		xdag_hash_t seed, xdag_hash_t share,rx_pool_task* task)
 {
 	if(!miner) {
 		xdag_err("conn_data->miner is null");
 		return 0;
 	}
 
-	//TODO: 1.check the timestamp < task_time + 64 + 16
-	//TODO: 2.check prehash and seed mathed
+	// find task by prehash
+	if(get_rx_task_by_prehash(prehash,task) < 0){
+		xdag_info("rx pow can not find task by prehash %016llx%016llx%016llx%016llx",
+				prehash[0],prehash[1],prehash[2],prehash[3]);
+		return 0;
+	}
+
+	// check seed is match current pool seed
+	if(memcmp(g_fixed_pool_seed,task->seed, sizeof(xdag_hash_t))){
+		xdag_info("rx pow miner seed %016llx%016llx%016llx%016llx not match current pool seed",
+				seed[0],seed[1],seed[2],seed[3]);
+		return 0;
+	}
+
+	// exclude duplicate nonce by the same miner and prehash
+	struct nonce_hash *eln;
+	uint64_t nonce = share[3];
+
+	HASH_FIND(hh, miner->nonces, &nonce, sizeof(uint64_t), eln);
+	if(eln != NULL) {
+		xdag_info("rx pow duplicate nonce %llu",nonce);
+		return 0;
+	}else{
+		eln = (struct nonce_hash*)malloc(sizeof(struct nonce_hash));
+		eln->key = nonce;
+		HASH_ADD(hh, miner->nonces, key, sizeof(uint64_t), eln);
+	}
+
 	return 1;
-
-
-
-//	struct nonce_hash *eln;
-//	uint64_t nonce = share[3];
-//	if(miner->task_index != task_index) {
-//		clear_nonces_hashtable(miner);
-//		miner->task_index = task_index;
-//	} else {
-//		HASH_FIND(hh, miner->nonces, &nonce, sizeof(uint64_t), eln);
-//		if(eln != NULL) {
-//			return 0;	// we received the same nonce and will ignore duplicate
-//		}
-//	}
-//	eln = (struct nonce_hash*)malloc(sizeof(struct nonce_hash));
-//	eln->key = nonce;
-//	HASH_ADD(hh, miner->nonces, key, sizeof(uint64_t), eln);
-//	return 1;
 }
 
 // checks if received data belongs to block and processes that block
@@ -901,8 +982,6 @@ static int process_rx_pow(connection_list_element *connection){
 
 	struct connection_pool_data *conn_data = &connection->connection_data;
 	struct rx_pow_block *pow = conn_data->rx_pow;
-	const uint64_t task_index = g_xdag_pool_task_index;
-	struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
 
 	memcpy(prehash,pow->field[1].data,sizeof(xdag_hash_t));
 	memcpy(seed,pow->field[2].data,sizeof(xdag_hash_t));
@@ -935,8 +1014,8 @@ static int process_rx_pow(connection_list_element *connection){
 
 	conn_data->last_share_time = time(0);
 
-	if(rx_share_can_be_accepted(conn_data->miner, *pow, task_index)) {
-
+	rx_pool_task task;
+	if(rx_share_can_be_accepted(conn_data->miner, prehash, seed, lastfield.data,&task)) {
 		xdag_hash_t hash;
 		uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 		memcpy(rx_task_data,prehash,sizeof(xdag_hash_t));
@@ -946,18 +1025,19 @@ static int process_rx_pow(connection_list_element *connection){
 
 		rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
 
-//		xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
-//		xdag_info("rx pre %016llx%016llx%016llx%016llx from miner",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
-//		xdag_info("rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
 		xdag_info("rx pow data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
 		          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
+		xdag_info("rx pow accept pre %016llx%016llx%016llx%016llx",prehash[0],prehash[1],prehash[2],prehash[3]);
 		xdag_info("rx pow share %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
 
-//		xdag_set_min_share(task, conn_data->miner->id.data, hash);
-//		rx_update_mean_log_diff(conn_data, task, hash);
-//		calculate_nopaid_shares(conn_data, task, hash);
+		//xdag_set_min_share(task, conn_data->miner->id.data, hash);
+		rx_update_mean_log_diff(conn_data, task.task_time, hash);
+		rx_calculate_nopaid_shares(conn_data, task.task_time, hash);
+	}else{
+		xdag_info("rx pow reject pre %016llx%016llx%016llx%016llx",prehash[0],prehash[1],prehash[2],prehash[3]);
+		xdag_info("rx pow reject seed %016llx%016llx%016llx%016llx",seed[0],seed[1],seed[2],seed[3]);
+		xdag_info("rx pow reject last %016llx%016llx%016llx%016llx",lastfield.data[0],lastfield.data[1],lastfield.data[2],lastfield.data[3]);
 	}
-
 	return 1;
 }
 
@@ -1003,69 +1083,6 @@ static int rx_process_received_share(connection_list_element *connection)
 		return 0;
 	}
 	return 0;
-}
-
-
-// processes received share
-// returns:
-// 0 - error
-// 1 - success
-static int process_received_share(connection_list_element *connection)
-{
-	struct connection_pool_data *conn_data = &connection->connection_data;
-
-	const uint64_t task_index = g_xdag_pool_task_index;
-	struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-
-	if(++conn_data->shares_count > SHARES_PER_TASK_LIMIT) {   //if shares count limit is exceded it is considered as spamming and current connection is disconnected
-		close_connection(connection, "Spamming of shares");
-		return 0;
-	}
-
-	if(conn_data->state == UNKNOWN_ADDRESS) {
-		if(!register_new_miner(connection)) {
-			return 0;
-		}
-	} else {
-		if(!conn_data->miner) {
-			close_connection(connection, "Miner is unregistered");
-			return 0;
-		}
-		if(memcmp(conn_data->miner->id.data, conn_data->data, sizeof(xdag_hashlow_t)) != 0) {
-			close_connection(connection, "Wallet address was unexpectedly changed");
-			return 0;
-		}
-		memcpy(conn_data->miner->id.data, conn_data->data, sizeof(struct xdag_field));	//TODO:do I need to copy whole field?
-	}
-
-	conn_data->last_share_time = time(0);
-
-	if(share_can_be_accepted(conn_data->miner, (uint64_t*)conn_data->data, task_index)) {
-		xdag_hash_t hash;
-		if(g_xdag_mine_type == XDAG_RANDOMX){
-			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
-			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
-			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));
-			uint64_t *d=(uint64_t*)conn_data->data;
-			uint64_t *td=(uint64_t*)rx_task_data;
-
-			rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
-
-			xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
-			xdag_info("rx pre %016llx%016llx%016llx%016llx from miner",task->task[0].data[0],task->task[0].data[1],task->task[0].data[2],task->task[0].data[3]);
-			xdag_info("rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
-			xdag_info("rx task data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
-			          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
-			xdag_info("rx share %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
-		}else{
-			xdag_hash_final(task->ctx0, conn_data->data, sizeof(struct xdag_field), hash);
-		}
-		xdag_set_min_share(task, conn_data->miner->id.data, hash);
-		rx_update_mean_log_diff(conn_data, task, hash);
-		calculate_nopaid_shares(conn_data, task, hash);
-	}
-
-	return 1;
 }
 
 static int receive_data_from_connection(connection_list_element *connection)
@@ -1295,10 +1312,14 @@ void *rx_pool_payment_thread(void *arg)
 	}
 
 	for(;;) {
+		rx_pool_task task;
 		int processed = 0;
-		const uint64_t task_index = g_xdag_pool_task_index;
-		struct xdag_pool_task *task = &g_xdag_pool_task[task_index & 1];
-		const xtime_t current_task_time = task->task_time;
+
+		if(get_rx_latest_task(&task) < 0){
+			sleep(1);
+			continue;
+		}
+		const xtime_t current_task_time = task.task_time;
 
 		if(current_task_time > prev_task_time) {
 			uint64_t *hash = g_xdag_mined_hashes[(current_task_time - CONFIRMATIONS_COUNT + 1) & (CONFIRMATIONS_COUNT - 1)];
@@ -1823,10 +1844,8 @@ struct xdag_block *rx_block_queue_first(void)
 	return b;
 }
 
-void rx_update_mean_log_diff(struct connection_pool_data *conn_data, struct xdag_pool_task *task, xdag_hash_t hash)
+void rx_update_mean_log_diff(struct connection_pool_data *conn_data, uint64_t task_time, xdag_hash_t hash)
 {
-	const xtime_t task_time = task->task_time;
-
 	if(conn_data->task_time < task_time) {
 		if(conn_data->task_time != 0) {
 			conn_data->mean_log_difficulty =

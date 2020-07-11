@@ -52,7 +52,7 @@ void test2(){
 		enqueue_rx_task(task);
 	}
 	std::cout << "print all pre hash and seed" << std::endl;
-	printf_all_rx_tasks();
+	printf_miner_rx_tasks();
 
 	xdag_hash_t latest_prehash;
 	for(int i=0;i<3;i++){
@@ -72,7 +72,7 @@ void test2(){
 		memcpy(latest_prehash,task.prehash,sizeof(latest_prehash));
 		enqueue_rx_task(task);
 
-		printf_all_rx_tasks();
+		printf_miner_rx_tasks();
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
@@ -121,7 +121,7 @@ void test2(){
 	update_rx_task_by_prehash(rt5.prehash,rt5);
 
 	std::cout << "updated task 1 3 5" <<std::endl;
-	printf_all_rx_tasks();
+	printf_miner_rx_tasks();
 
 	rx_pool_task rt6;
 	get_rx_latest_task(&rt6);
