@@ -1,30 +1,128 @@
-set(test_randomx_sources
-        test_randomx.cpp)
+add_executable(api-example2
+        api-example2.cpp)
 
-set(test_randomx_headers)
+include_directories(api-example2
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
 
-add_executable(test_randomx
-        ${test_randomx_sources}
-        ${test_randomx_headers})
-
-target_link_libraries(test_randomx
+target_link_libraries(api-example2
         PRIVATE
-        ${GTEST_LIBRARY})
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY})
 
-include_directories(test_core ${GTEST_INCLUDE_DIR})
+add_executable(randomx-tests
+  tests.cpp)
 
-set_property(TARGET test_randomx
-        PROPERTY
-        FOLDER "test")
+include_directories(randomx-tests
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
 
-add_test(NAME   test_randomx
-        COMMAND test_randomx)
+target_link_libraries(randomx-tests
+    PRIVATE
+    ${GTEST_LIBRARY}
+    ${RANDOMX_LIBRARY})
+
+add_executable(randomx-codegen
+  code-generator.cpp)
+
+include_directories(randomx-codegen
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(randomx-codegen
+    PRIVATE
+    ${GTEST_LIBRARY}
+    ${RANDOMX_LIBRARY})
+
+add_executable(randomx-benchmark
+    benchmark.cpp
+    affinity.cpp)
+
+include_directories(randomx-benchmark
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(randomx-benchmark
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(dynamic_seed_no_wait
+        change_seed_nowait.cpp)
+
+include_directories(dynamic_seed_no_wait
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(dynamic_seed_no_wait
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(dynamic_seed_wait
+        change_seed_wait.cpp)
+
+include_directories(dynamic_seed_wait
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(dynamic_seed_wait
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(test_rx_seedheight
+        test_rx_seedheight.cpp)
+
+include_directories(test_rx_seedheight
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR})
+
+target_link_libraries(test_rx_seedheight
+        PRIVATE
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+#add_executable(hex_util
+#        hex_util.cpp)
+#
+#include_directories(hex_util
+#        ${GTEST_INCLUDE_DIR}
+#        ${XDAG_CORE_INCLUDE_DIR}
+#        ${UTILS_INCLUDE_DIR})
+#
+#target_link_libraries(hex_util
+#        PRIVATE
+#        ${GTEST_LIBRARY}
+#        ${UTILS_LIBRARY}
+#        ${XDAG_CORE_LIBRARY}
+#        )
 
 if(RUN_TEST)
+    #run randomx-test after build
     add_custom_target(test_randomx_all
-            ALL DEPENDS test_randomx)
+            ALL DEPENDS randomx-tests)
 
-    add_custom_command(TARGET test_randomx_all
+    add_custom_command(TARGET randomx-tests
             POST_BUILD
-            COMMAND           test_randomx)
+            COMMAND randomx-tests)
+
+    add_custom_command(TARGET randomx-codegen
+            POST_BUILD
+            COMMAND randomx-codegen)
+
+    add_custom_command(TARGET test_rx_seedheight
+            POST_BUILD
+            COMMAND test_rx_seedheight)
+
+    add_custom_target(benchmark_randomx_all
+            ALL DEPENDS randomx-benchmark)
+
+    add_custom_command(TARGET randomx-benchmark
+            POST_BUILD
+            COMMAND randomx-benchmark --mine --jit --threads 4 --auto)
 endif()

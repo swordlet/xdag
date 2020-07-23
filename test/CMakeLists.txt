@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "-std=gnu11 -O3 -g -Wall -Wmissing-prototypes -Wno-unused-result")
 
 add_subdirectory(test_core)
-add_subdirectory(test_libuv)
+#add_subdirectory(test_libuv)
 add_subdirectory(test_randomx)
 add_subdirectory(test_xfer)
 

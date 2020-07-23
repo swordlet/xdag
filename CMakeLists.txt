@@ -113,7 +113,8 @@ list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*dvstime.c$")
 list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*statsdaemon.c$")
 #[7]end
 
-#[8]compile executable object start
+#[8]compile executable object start and add subdirectory external
+add_subdirectory(external)
 if(APPLE)
   add_executable(
           ${PROJECT_NAME}
@@ -149,6 +150,7 @@ target_include_directories(
         ${SECP256K1_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
         ${TCMALLOC_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR}
 )
 target_link_libraries(
         ${PROJECT_NAME}
@@ -160,6 +162,7 @@ target_link_libraries(
         ${OPENSSL_CRYPTO_LIBRARY}
         ${TCMALLOC_LIBRARY}
         ${PROFILER_LIBRARY}
+        ${RANDOMX_LIBRARY}
         m
 	    dl
 )
