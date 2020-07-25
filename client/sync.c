@@ -11,7 +11,7 @@
 #include "transport.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "time.h"
+#include "xdag_time.h"
 
 #define SYNC_HASH_SIZE      0x10000
 #define get_list(hash)      (g_sync_hash   + ((hash)[0] & (SYNC_HASH_SIZE - 1)))

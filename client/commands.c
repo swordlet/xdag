@@ -24,6 +24,8 @@
 #include <unistd.h>
 #endif
 #include "version.h"
+#include "rx_miner.h"
+#include "rx_mine_cache.h"
 
 #define Nfields(d) (2 + d->hasRemark + d->fieldsCount + 3 * d->keysCount + 2 * d->outsig)
 #define COMMAND_HISTORY ".cmd.history"
@@ -58,6 +60,7 @@ void processLevelCommand(char *nextParam, FILE *out);
 void processMinerCommand(char *nextParam, FILE *out);
 void processMinersCommand(char *nextParam, FILE *out);
 void processMiningCommand(char *nextParam, FILE *out);
+void processRxPoolTaskCommand(char *nextParam, FILE *out);
 void processNetCommand(char *nextParam, FILE *out);
 void processTransportCommand(char *nextParam, FILE *out);
 void processPoolCommand(char *nextParam, FILE *out);
@@ -87,6 +90,7 @@ int xdag_com_level(char *, FILE*);
 int xdag_com_miner(char *, FILE*);
 int xdag_com_miners(char *, FILE*);
 int xdag_com_mining(char *, FILE*);
+int xdag_rx_pool_tasks(char * args, FILE* out);
 int xdag_com_net(char *, FILE*);
 int xdag_com_transport(char *, FILE*);
 int xdag_com_pool(char *, FILE*);
@@ -118,6 +122,7 @@ XDAG_COMMAND commands[] = {
 	{ "miner"       , 2, xdag_com_miner },
 	{ "miners"      , 2, xdag_com_miners },
 	{ "mining"      , 1, xdag_com_mining },
+	{ "rxpooltasks" , 2, xdag_rx_pool_tasks },
 	{ "net"         , 0, xdag_com_net },
 	{ "transport"   , 0, xdag_com_transport },
 	{ "pool"        , 2, xdag_com_pool },
@@ -196,6 +201,13 @@ int xdag_com_mining(char * args, FILE* out)
 	processMiningCommand(args, out);
 	return 0;
 }
+
+int xdag_rx_pool_tasks(char * args, FILE* out)
+{
+	processRxPoolTaskCommand(args, out);
+	return 0;
+}
+
 
 int xdag_com_net(char * args, FILE* out)
 {
@@ -467,9 +479,19 @@ void processMiningCommand(char *nextParam, FILE *out)
 	} else if(sscanf(cmd, "%d", &nthreads) != 1 || nthreads < 0) {
 		fprintf(out, "Illegal number.\n");
 	} else {
-		xdag_mining_start(nthreads);
-		fprintf(out, "%d mining threads running\n", g_xdag_mining_threads);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			rx_mining_start(nthreads);
+			fprintf(out, "%d rx mining threads running\n", g_xdag_mining_threads);
+		}else{
+			xdag_mining_start(nthreads);
+			fprintf(out, "%d mining threads running\n", g_xdag_mining_threads);
+		}
 	}
+}
+
+void processRxPoolTaskCommand(char *nextParam, FILE *out)
+{
+	printf_pool_rx_tasks();
 }
 
 void processMinerCommand(char *nextParam, FILE *out)
@@ -975,6 +997,7 @@ void processHelpCommand(FILE *out)
 		"  miners               - for pool, print list of recent connected miners\n"
 		"  miner [A]            - for pool, print information of specified miner with address A.\n"
 		"  mining [N]           - print number of mining threads or set it to N\n"
+	  "  rxpooltasks          - print tasks of randomx mining\n"
 		"  net command          - run transport layer command, try 'net help'\n"
 		"  pool [CFG]           - print or set pool config; CFG is miners:maxip:maxconn:fee:reward:direct:fund\n"
 		"                          miners - maximum allowed number of miners,\n"
@@ -1002,7 +1025,11 @@ void processHelpCommand(FILE *out)
 
 void xdagSetCountMiningTread(int miningThreadsCount)
 {
-	xdag_mining_start(miningThreadsCount);
+	if(g_xdag_mine_type == XDAG_RANDOMX){
+		rx_mining_start(miningThreadsCount);
+	}else{
+		xdag_mining_start(miningThreadsCount);
+	}
 }
 
 double xdagGetHashRate(void)

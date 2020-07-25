@@ -25,7 +25,7 @@
 #include "algorithms/crc.h"
 #include "utils/log.h"
 #include "utils/utils.h"
-#include "utils/random.h"
+#include "utils/random_utils.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu

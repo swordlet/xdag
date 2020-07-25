@@ -52,6 +52,7 @@ enum bi_flags {
 };
 
 #define XDAG_BLOCK_FIELDS            16
+#define RX_POW_BLOCK_FIELDS          4
 #define REMARK_ENABLED               1
 #define MAX_WAITING_MAIN             1
 #define MAIN_START_AMOUNT            (1ll << 42)
@@ -98,6 +99,17 @@ struct xdag_field {
 
 struct xdag_block {
 	struct xdag_field field[XDAG_BLOCK_FIELDS];
+};
+
+/**
+ * rx pow with 4 fields
+ * 0: header field
+ * 1: prehash
+ * 2: seed
+ * 3: lastfield
+ * */
+struct rx_pow_block {
+	struct xdag_field field[RX_POW_BLOCK_FIELDS];
 };
 
 struct block_backrefs;

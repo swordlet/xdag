@@ -87,6 +87,7 @@ include_directories(${RocksDB_INCLUDE_DIR})
 #[6]add source file start
 file(GLOB_RECURSE DAGGER_SOURCES
         client/*.c
+        client/*.cpp
         dfslib/*.c
         dnet/*.c
         ldus/*.c
@@ -108,6 +109,7 @@ set(SHA256_MAC_ASM_SOURCES
 #[6]end
 
 #[7]ignore sources that we do not intend to include when building the executable...
+list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*main.c$")
 list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*cgi.c$")
 list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*dvstime.c$")
 list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*statsdaemon.c$")
@@ -115,21 +117,60 @@ list(FILTER DAGGER_SOURCES EXCLUDE REGEX ".*statsdaemon.c$")
 
 #[8]compile executable object start and add subdirectory external
 add_subdirectory(external)
+set(DAGGER_LIBRARY xdaglib)
+set(DAGGER_INCLUDE_DIR ./client/)
+
 if(APPLE)
-  add_executable(
-          ${PROJECT_NAME}
+  add_library(
+          ${DAGGER_LIBRARY}
           ${DAGGER_HEADERS}
           ${DAGGER_SOURCES}
           ${SHA256_MAC_ASM_SOURCES}
   )
 else(UNIX)
-  add_executable(
-          ${PROJECT_NAME}
+  add_library(
+          ${DAGGER_LIBRARY}
           ${DAGGER_HEADERS}
           ${DAGGER_SOURCES}
           ${SHA256_LINUX_ASM_SOURCES}
   )
 endif()
+
+target_include_directories(
+        ${DAGGER_LIBRARY}
+        PRIVATE
+        ${RocksDB_INCLUDE_DIR}
+        ${SECP256K1_INCLUDE_DIR}
+        ${OPENSSL_INCLUDE_DIR}
+        ${TCMALLOC_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR}
+)
+
+target_link_libraries(
+        ${DAGGER_LIBRARY}
+        PUBLIC
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${RocksDB_LIBRARY}
+        ${SECP256K1_LIBRARY}
+        ${OPENSSL_SSL_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
+        ${TCMALLOC_LIBRARY}
+        ${PROFILER_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        m
+        dl
+)
+
+add_executable(
+        ${PROJECT_NAME}
+        client/main.c
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+        PUBLIC
+        ${DAGGER_LIBRARY}
+)
 
 add_executable(
         cgi_stats

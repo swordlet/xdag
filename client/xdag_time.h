@@ -1,7 +1,7 @@
 /* time functions, T14.524-T14.582 $DVS:time$ */
 
-#ifndef XDAG_TIME_H
-#define XDAG_TIME_H
+#ifndef XDAG_XDAG_TIME_H
+#define XDAG_XDAG_TIME_H
 
 #include <stdint.h>
 #include <time.h>

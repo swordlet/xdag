@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "types.h"
-#include "time.h"
+#include "xdag_time.h"
 #include "system.h"
 #include "block.h"
 #include "rsdb.h"
@@ -45,6 +45,12 @@ enum xdag_type {
 	XDAG_POOL = 2
 };
 
+enum xdag_mine_type {
+	XDAG_RAW = 1,
+	XDAG_RANDOMX = 2
+};
+
+
 // defines if xdag started as a pool or a wallet
 extern enum xdag_type g_xdag_type;
 
@@ -62,6 +68,9 @@ extern char *g_coinname, *g_progname;
 
 //defines if mining is disabled (pool)
 extern int g_disable_mining;
+
+//defines mine type for test
+extern enum xdag_mine_type g_xdag_mine_type;
 
 extern xd_rsdb_t* g_xdag_rsdb;
 

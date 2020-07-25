@@ -7,14 +7,14 @@
 #define SEEDHASH_EPOCH_BLOCKS_0	4096
 #define SEEDHASH_EPOCH_LAG_0		128
 
-uint64_t rx_seedheight(const uint64_t height)
+static uint64_t rx_seedheight(const uint64_t height)
 {
 	uint64_t s_height = (height <= SEEDHASH_EPOCH_BLOCKS_0 + SEEDHASH_EPOCH_LAG_0) ? 0 :
 	                    (height - SEEDHASH_EPOCH_LAG_0 - 1) & ~(SEEDHASH_EPOCH_BLOCKS_0 - 1);
 	return s_height;
 }
 
-void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next_height)
+static void rx_seedheights(const uint64_t height, uint64_t *seed_height, uint64_t *next_height)
 {
 	*seed_height = rx_seedheight(height);
 	*next_height = rx_seedheight(height + SEEDHASH_EPOCH_LAG_0);

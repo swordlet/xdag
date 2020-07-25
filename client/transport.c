@@ -16,7 +16,7 @@
 #include "version.h"
 #include "../dnet/dnet_main.h"
 #include "utils/log.h"
-#include "utils/random.h"
+#include "utils/random_utils.h"
 
 #define NEW_BLOCK_TTL     5
 #define REQUEST_WAIT      64

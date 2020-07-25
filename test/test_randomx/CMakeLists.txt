@@ -87,6 +87,40 @@ target_link_libraries(test_rx_seedheight
         ${RANDOMX_LIBRARY}
         ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(test_rx_hashp
+        test_rx_hashp.cpp)
+
+target_include_directories(test_rx_hashp
+        PRIVATE
+        ${DAGGER_INCLUDE_DIR}
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(test_rx_hashp
+        PRIVATE
+        ${DAGGER_LIBRARY}
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(test_rx_hashs
+        test_rx_hashs.cpp)
+
+target_include_directories(test_rx_hashs
+        PRIVATE
+        ${DAGGER_INCLUDE_DIR}
+        ${GTEST_INCLUDE_DIR}
+        ${RANDOMX_INCLUDE_DIR}
+        ${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(test_rx_hashs
+        PRIVATE
+        ${DAGGER_LIBRARY}
+        ${GTEST_LIBRARY}
+        ${RANDOMX_LIBRARY}
+        ${CMAKE_THREAD_LIBS_INIT})
+
 #add_executable(hex_util
 #        hex_util.cpp)
 #

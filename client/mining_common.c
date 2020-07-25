@@ -7,6 +7,8 @@
 #include "miner.h"
 #include "pool.h"
 #include "../dfslib/dfslib_crypt.h"
+#include "rx_miner.h"
+#include "rx_pool.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -14,6 +16,7 @@
 
 struct xdag_pool_task g_xdag_pool_task[2];
 uint64_t g_xdag_pool_task_index;
+uint64_t g_xdag_rx_task_seq = 0;
 
 const char *g_miner_address;
 
@@ -66,9 +69,17 @@ int xdag_initialize_mining(const char *pool_arg, const char *miner_address)
 	if(crypt_start()) return -1;
 
 	if(is_wallet()) {
-		return xdag_initialize_miner(pool_arg);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			return rx_initialize_miner(pool_arg);
+		}else{
+			return xdag_initialize_miner(pool_arg);
+		}
 	} else {
-		return xdag_initialize_pool(pool_arg);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			return rx_initialize_pool(pool_arg);
+		} else{
+			return xdag_initialize_pool(pool_arg);
+		}
 	}
 }
 

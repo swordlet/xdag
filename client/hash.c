@@ -7,6 +7,9 @@
 #include "algorithms/sha256.h"
 #include "hash.h"
 #include "system.h"
+#include "mining_common.h"
+#include "utils/log.h"
+#include "rx_mine_hash.h"
 
 void xdag_hash(void *data, size_t size, xdag_hash_t hash)
 {
@@ -203,4 +206,62 @@ void xdag_hash_set_state(void *ctxv, xdag_hash_t state, size_t size)
 	ctx->bitlen = size << 3;
 	ctx->bitlenH = 0;
 	ctx->md_len = SHA256_BLOCK_SIZE;
+}
+
+
+//calculate sha256 hash for rx mining
+void xdag_rx_pre_hash(void *data, size_t size, xdag_hash_t hash)
+{
+	SHA256REF_CTX ctx;
+	sha256_init(&ctx);
+	sha256_update(&ctx, (uint8_t*)data, size);
+	sha256_final(&ctx, (uint8_t*)hash);
+}
+
+uint64_t xdag_rx_mine_slow_hash(uint32_t thread_index,void *task,uint64_t *nonce,uint32_t steps,
+                                uint64_t attemps, xdag_hash_t output_hash){
+	int nonce_pos=0;
+	xdag_hash_t hash0;
+	uint64_t nonce0=*nonce;
+	uint64_t min_nonce;
+
+	rx_pool_task *rt=(rx_pool_task*)task;
+	uint8_t data2hash[sizeof(xdag_hash_t)*2];
+	memcpy(data2hash,rt->prehash,sizeof(xdag_hash_t));
+	memcpy(data2hash+sizeof(xdag_hash_t),rt->lastfield,sizeof(xdag_hashlow_t));
+
+	min_nonce=nonce0;
+	nonce_pos = sizeof(xdag_hash_t) + sizeof(xdag_hashlow_t);
+
+	//try attemps times to find min hash
+	for(int i=0;i < attemps;i++)
+	{
+		memcpy(data2hash+nonce_pos,&nonce0,sizeof(uint64_t));
+		rx_mine_hash(thread_index,data2hash, sizeof(data2hash), hash0);
+		if(xdag_cmphash(hash0,output_hash) < 0)
+		{
+			memcpy(output_hash, hash0, sizeof(xdag_hash_t));
+			min_nonce = nonce0;
+		}
+		nonce0+=steps;
+	}
+
+	*nonce=nonce0;
+	rt->lastfield[3]=min_nonce;
+	memcpy(data2hash,rt->prehash,sizeof(xdag_hash_t));
+	memcpy(data2hash+sizeof(xdag_hash_t),rt->lastfield,sizeof(xdag_hash_t));
+
+	uint64_t *td=(uint64_t*)data2hash;
+	rx_mine_hash(thread_index,data2hash, sizeof(data2hash), output_hash);
+
+	xdag_info("rx final hashed %d",rt->hashed);
+	xdag_info("rx final discards %d",rt->discards);
+	xdag_info("rx pre %016llx%016llx%016llx%016llx",rt->prehash[0],rt->prehash[1],rt->prehash[2],rt->prehash[3]);
+	xdag_info("rx last data %016llx%016llx%016llx%016llx",rt->lastfield[0],rt->lastfield[1],rt->lastfield[2],rt->lastfield[3]);
+	xdag_info("rx final %016llx%016llx%016llx%016llx",output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
+	xdag_info("rx data2 %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
+	          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
+	xdag_info("rx final nonce %016llx",min_nonce);
+
+	return min_nonce;
 }

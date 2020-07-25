@@ -21,12 +21,14 @@
 #include "commands.h"
 #include "utils/utils.h"
 #include "mining_common.h"
-#include "time.h"
+#include "xdag_time.h"
 #include "math.h"
 #include "utils/atomic.h"
-#include "utils/random.h"
+#include "utils/random_utils.h"
 #include "websocket/websocket.h"
 #include "global.h"
+#include "rx_miner.h"
+#include "rx_mine_cache.h"
 
 int g_block_production_on;
 static pthread_mutex_t g_create_block_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -40,6 +42,7 @@ void append_block_info(struct block_internal *bi);
 int32_t check_signature_out(struct block_internal*, struct xdag_public_key*, const int);
 static int32_t find_and_verify_signature_out(struct xdag_block*, struct xdag_public_key*, const int);
 int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
+int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
 int remove_orphan(xdag_hashlow_t);
 void add_orphan(struct block_internal*, struct xdag_block*);
 static inline size_t remark_acceptance(xdag_remark_t);
@@ -1069,8 +1072,14 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 	}
 
 	if (mining) {
-		if(!do_mining(block, &pretop, send_time)) {
-			goto begin;
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			if(!do_rx_mining(block, &pretop, send_time)) {
+				goto begin;
+			}
+		}else{
+			if(!do_mining(block, &pretop, send_time)) {
+				goto begin;
+			}
 		}
 	}
 
@@ -1160,6 +1169,40 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 	pthread_mutex_lock((pthread_mutex_t*)g_ptr_share_mutex);
 	memcpy(block[0].field[XDAG_BLOCK_FIELDS - 1].data, task->lastfield.data, sizeof(struct xdag_field));
 	pthread_mutex_unlock((pthread_mutex_t*)g_ptr_share_mutex);
+
+	return 1;
+}
+
+int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time)
+{
+	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
+
+	//TODO:use key from pool task
+	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
+	xdag_hash_t fixed_key_hash;
+	xdag_address2hash(fixed_key,fixed_key_hash);
+
+	//enqueue rx task
+	rx_pool_task rx_task;
+	rx_task.task_time = MAIN_TIME(send_time);
+	rx_task.seqno = g_xdag_rx_task_seq++;
+	memcpy(rx_task.seed,fixed_key_hash,sizeof(fixed_key_hash));
+	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_task.prehash);
+	xdag_info("rx pow enqueue task prehash %016llx%016llx%016llx%016llx",
+	          rx_task.prehash[0],rx_task.prehash[1],rx_task.prehash[2],rx_task.prehash[3]);
+	enqueue_rx_task(rx_task);
+
+	while(xdag_get_xtimestamp() <= send_time) {
+		sleep(1);
+		pthread_mutex_lock(&g_create_block_mutex);
+		struct block_internal *pretop_new = pretop_block();
+		pthread_mutex_unlock(&g_create_block_mutex);
+		if(*pretop != pretop_new && xdag_get_xtimestamp() < send_time) {
+			*pretop = pretop_new;
+			xdag_info("Mining: start from beginning because of pre-top block changed");
+			return 0;
+		}
+	}
 
 	return 1;
 }
@@ -1263,7 +1306,11 @@ begin:
 	if (is_wallet()) {
 		// start mining threads
 		xdag_mess("Starting mining threads...");
-		xdag_mining_start(n_mining_threads);
+		if(g_xdag_mine_type == XDAG_RANDOMX){
+			rx_mining_start(n_mining_threads);
+		}else{
+			xdag_mining_start(n_mining_threads);
+		}
 	}
 
 	// periodic generation of blocks and determination of the main block

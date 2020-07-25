@@ -32,7 +32,7 @@
 #include "xdag_config.h"
 #include "json-rpc/rpc_service.h"
 #include "../dnet/dnet_crypt.h"
-#include "utils/random.h"
+#include "utils/random_utils.h"
 #include "websocket/websocket.h"
 #include "rsdb.h"
 
@@ -207,7 +207,9 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 			if(++i < argc) {
 				parameters->pool_configuration.mining_configuration = argv[i];
 			}
-		} else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
+		} else if(ARG_EQUAL(argv[i], "-randomx", "")){
+	        g_xdag_mine_type = XDAG_RANDOMX;
+    } else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
 			g_xdag_run = 0;
 		} else if(ARG_EQUAL(argv[i], "-s", "")) { /* address of this node */
 			if(++i < argc)
