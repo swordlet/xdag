@@ -13,6 +13,7 @@ extern "C"
 {
 #endif
 
+void rx_hashs_get_seed(char* seedhash);
 void rx_hashs_allocate_state(void);
 void rx_hashs_free_state(void);
 void rx_slow_hashs(const char *seedhash, const void *data, size_t length, uint8_t *hash);

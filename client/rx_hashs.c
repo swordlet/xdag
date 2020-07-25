@@ -42,6 +42,13 @@ static void local_abort(const char *msg)
 #endif
 }
 
+void rx_hashs_get_seed(char* seedhash){
+	if(seedhash == NULL){
+		local_abort("can not get rx state seed with null ptr");
+	}
+	memcpy(seedhash,rx_state.rs_hash,RX_HASH_SIZE);
+}
+
 static CTHR_THREAD_RTYPE rx_seedthread(void *arg) {
 	seedinfo_s *si = (seedinfo_s*)arg;
 	randomx_init_dataset(rx_dataset, si->si_cache, si->si_start, si->si_count);

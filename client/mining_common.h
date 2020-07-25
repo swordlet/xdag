@@ -26,7 +26,7 @@ typedef struct tag_rx_pool_task{
 	uint64_t discard_flag;        //discard flags
 	uint64_t nonce0;              //first random nonce
 	xdag_hash_t prehash;          //pre hash
-	xdag_hash_t seed;             //seed used to randomx
+	xdag_hashlow_t seed;          //seed used to randomx
 	xdag_hash_t lastfield;        //lastfield commit to pool
 	xdag_hash_t minhash;          //minhash for mine compare
 	xdag_frame_t task_time;       //task create time

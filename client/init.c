@@ -208,7 +208,16 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 				parameters->pool_configuration.mining_configuration = argv[i];
 			}
 		} else if(ARG_EQUAL(argv[i], "-randomx", "")){
-	        g_xdag_mine_type = XDAG_RANDOMX;
+        g_xdag_mine_type = XDAG_RANDOMX;
+    } else if(ARG_EQUAL(argv[i], "", "-rxheight")) {
+        if(!(++i < argc && sscanf(argv[i], "%llu", &g_rx_fork_height) == 1)) {
+        	if(g_xdag_testnet){
+        		// TODO: use macro to define testnet and mainnet fork height
+        		g_rx_fork_height = 100;
+        	}else{
+        		g_rx_fork_height = 1000000;
+        	}
+        }
     } else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
 			g_xdag_run = 0;
 		} else if(ARG_EQUAL(argv[i], "-s", "")) { /* address of this node */

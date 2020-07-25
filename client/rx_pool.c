@@ -37,8 +37,9 @@
 #include "utils/atomic.h"
 #include "xdag_time.h"
 #include "rx_mine_hash.h"
-#include "rx_pool_hash.h"
 #include "rx_mine_cache.h"
+#include "rx_hashs.h"
+#include "pool.h"
 
 //TODO: why do we need these two definitions?
 #define START_MINERS_COUNT     256
@@ -151,7 +152,7 @@ static uint32_t g_connections_per_miner_limit = DEFAUL_CONNECTIONS_PER_MINER_LIM
 static uint32_t g_connections_count = 0;
 static double g_pool_fee = 0, g_pool_reward = 0, g_pool_direct = 0, g_pool_fund = 0;
 static struct xdag_block *g_firstb = 0, *g_lastb = 0;
-static xdag_hash_t g_fixed_pool_seed;
+//static xdag_hash_t g_fixed_pool_seed;
 
 static int g_stop_general_mining = 1;
 extern int g_block_production_on;
@@ -192,15 +193,7 @@ int rx_initialize_pool(const char *pool_arg)
 {
 	pthread_t th;
 
-	if(g_xdag_mine_type == XDAG_RANDOMX){
-		//TODO:use key base on rx seed height
-		xdag_mess("pool init seed");
-		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-		xdag_address2hash(fixed_key, g_fixed_pool_seed);
-		rx_pool_init_seed(g_fixed_pool_seed, sizeof(g_fixed_pool_seed));
-		xdag_info("xdag init fixed seed %016llx%016llx%016llx%016llx",
-		          g_fixed_pool_seed[0],g_fixed_pool_seed[1],g_fixed_pool_seed[2],g_fixed_pool_seed[3]);
-	}
+	printf("initialize rx pool rx fork height %llu \n",g_rx_fork_height);
 
 	memset(&g_pool_miner, 0, sizeof(struct miner_pool_data));
 	memset(&g_fund_miner, 0, sizeof(struct miner_pool_data));
@@ -870,6 +863,7 @@ static int share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t shar
 static int rx_share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t prehash,
 		xdag_hash_t seed, xdag_hash_t share,rx_pool_task* task)
 {
+	xdag_hashlow_t seedhash;
 	if(!miner) {
 		xdag_err("conn_data->miner is null");
 		return 0;
@@ -883,9 +877,10 @@ static int rx_share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t p
 	}
 
 	// check seed is match current pool seed
-	if(memcmp(g_fixed_pool_seed,task->seed, sizeof(xdag_hash_t))){
-		xdag_info("rx pow miner seed %016llx%016llx%016llx%016llx not match current pool seed",
-				seed[0],seed[1],seed[2],seed[3]);
+	get_current_rx_seed((char*)seedhash);
+	if(memcmp(seedhash,task->seed, sizeof(xdag_hashlow_t))){
+		xdag_info("rx pow miner seed %016llx%016llx%016llx not match current pool seed",
+				seed[0],seed[1],seed[2]);
 		return 0;
 	}
 
@@ -1017,13 +1012,16 @@ static int process_rx_pow(connection_list_element *connection){
 	rx_pool_task task;
 	if(rx_share_can_be_accepted(conn_data->miner, prehash, seed, lastfield.data,&task)) {
 		xdag_hash_t hash;
+		xdag_hash_t seedhash;
 		uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 		memcpy(rx_task_data,prehash,sizeof(xdag_hash_t));
 		memcpy(rx_task_data+sizeof(xdag_hash_t),lastfield.data,sizeof(xdag_hash_t));
 		uint64_t *d=(uint64_t*)lastfield.data;
 		uint64_t *td=(uint64_t*)rx_task_data;
 
-		rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
+		//rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
+		get_current_rx_seed(seedhash);
+		rx_slow_hashs((const char*)seedhash,rx_task_data,sizeof(rx_task_data),(uint8_t*)hash);
 
 		xdag_info("rx pow data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
 		          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);

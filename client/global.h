@@ -72,6 +72,9 @@ extern int g_disable_mining;
 //defines mine type for test
 extern enum xdag_mine_type g_xdag_mine_type;
 
+//defines randomx start height
+extern uint64_t g_rx_fork_height;
+
 extern xd_rsdb_t* g_xdag_rsdb;
 
 extern xdag_hash_t g_top_main_chain_hash;

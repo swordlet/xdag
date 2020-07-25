@@ -27,6 +27,7 @@
 #include "utils/random_utils.h"
 #include "websocket/websocket.h"
 #include "global.h"
+#include "rx_common.h"
 #include "rx_miner.h"
 #include "rx_mine_cache.h"
 
@@ -561,26 +562,26 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 		tmpNodeBlock.flags |= BI_EXTRA;
 	}
 
-    // check ref block
-    for(i = 1; i < XDAG_BLOCK_FIELDS; ++i) {
-        if(1 << i & (inmask | outmask)) {
-            if(xd_rsdb_get_bi(newBlock->field[i].hash, &blockRefs[i - 1])){
-                err = 5;
-                xdag_err("err-5");
-                goto end;
-            }
-            if(blockRefs[i-1].time >= tmpNodeBlock.time) {
-                err = 6;
-                xdag_err("err-6");
-                goto end;
-            }
-            if(tmpNodeBlock.nlinks >= MAX_LINKS) {
-                err = 7;
-                xdag_err("err-7");
-                goto end;
-            }
-        }
-    }
+  // check ref block
+  for(i = 1; i < XDAG_BLOCK_FIELDS; ++i) {
+      if(1 << i & (inmask | outmask)) {
+          if(xd_rsdb_get_bi(newBlock->field[i].hash, &blockRefs[i - 1])){
+              err = 5;
+              xdag_err("err-5");
+              goto end;
+          }
+          if(blockRefs[i-1].time >= tmpNodeBlock.time) {
+              err = 6;
+              xdag_err("err-6");
+              goto end;
+          }
+          if(tmpNodeBlock.nlinks >= MAX_LINKS) {
+              err = 7;
+              xdag_err("err-7");
+              goto end;
+          }
+      }
+  }
 
 	if(is_pool()) {
 		check_new_main();
@@ -1072,7 +1073,7 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 	}
 
 	if (mining) {
-		if(g_xdag_mine_type == XDAG_RANDOMX){
+		if(get_hash_type() == HASH_TYPE_RANDOMX){
 			if(!do_rx_mining(block, &pretop, send_time)) {
 				goto begin;
 			}
@@ -1173,21 +1174,27 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 	return 1;
 }
 
+static int get_rx_seed(xdag_hashlow_t rx_seed){
+	uint64_t seed_height = rx_seedheight(g_xdag_stats.nmain);
+	xd_rsdb_get_heighthash(seed_height,rx_seed);
+	return seed_height;
+}
+
 int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time)
 {
+	uint64_t seed_height;
+	xdag_hashlow_t  seed_hash;
 	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
 
-	//TODO:use key from pool task
-	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-	xdag_hash_t fixed_key_hash;
-	xdag_address2hash(fixed_key,fixed_key_hash);
+	seed_height = get_rx_seed(seed_hash);
 
-	//enqueue rx task
 	rx_pool_task rx_task;
 	rx_task.task_time = MAIN_TIME(send_time);
 	rx_task.seqno = g_xdag_rx_task_seq++;
-	memcpy(rx_task.seed,fixed_key_hash,sizeof(fixed_key_hash));
+	memcpy(rx_task.seed,seed_hash,sizeof(seed_hash));
 	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_task.prehash);
+	xdag_info("rx pow enqueue task seed height %llu seed %016llx%016llx%016llx",seed_height,
+	          rx_task.seed[0],rx_task.seed[1],rx_task.seed[2]);
 	xdag_info("rx pow enqueue task prehash %016llx%016llx%016llx%016llx",
 	          rx_task.prehash[0],rx_task.prehash[1],rx_task.prehash[2],rx_task.prehash[3]);
 	enqueue_rx_task(rx_task);

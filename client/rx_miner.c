@@ -73,6 +73,8 @@ int rx_initialize_miner(const char *pool_address){
 	int err=0;
 	pthread_t th;
 
+	printf("initialize rx miner rx fork height %llu\n",g_rx_fork_height);
+
 	memset(&g_local_miner, 0, sizeof(struct miner));
 	xdag_get_our_block(g_local_miner.id.data);
 
@@ -286,13 +288,13 @@ void *rx_miner_net_thread(void *arg){
 					rt.discards=0;
 					rt.discard_flag=0;
 					memcpy(rt.prehash,data[0].data, sizeof(xdag_hash_t));
-					memcpy(rt.seed,data[1].data, sizeof(xdag_hash_t));
+					memcpy(rt.seed,data[1].data, sizeof(xdag_hashlow_t));
 					memcpy(rt.lastfield,hash,sizeof(xdag_hashlow_t));
 					memset(rt.minhash,0xff,sizeof(xdag_hash_t));
 					enqueue_rx_task(rt);
 
 					xdag_info("enqueue rx pre : %016llx%016llx%016llx%016llx",rt.prehash[0],rt.prehash[1],rt.prehash[2],rt.prehash[3]);
-					xdag_info("enqueue rx seed : %016llx%016llx%016llx%016llx",rt.seed[0],rt.seed[1],rt.seed[2],rt.seed[3]);
+					xdag_info("enqueue rx seed : %016llx%016llx%016llx",rt.seed[0],rt.seed[1],rt.seed[2]);
 					xdag_info("rx mine task  : t=%llx N=%llu", task_frame << 16 | 0xffff, task_index);
 
 					ndata = 0;
@@ -317,7 +319,7 @@ void *rx_miner_net_thread(void *arg){
 						struct rx_pow_block pow;
 
 						memcpy(fld[1].data, rt.prehash, sizeof(xdag_hash_t));
-						memcpy(fld[2].data, rt.seed, sizeof(xdag_hash_t));
+						memcpy(fld[2].data, rt.seed, sizeof(xdag_hashlow_t));
 						memcpy(fld[3].data, rt.lastfield, sizeof(xdag_hash_t));
 						res = rx_send_to_pool(fld, RX_POW_BLOCK_FIELDS);
 						if(res) {

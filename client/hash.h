@@ -12,7 +12,14 @@ typedef uint64_t xdag_hashlow_t[3];
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
+
+typedef enum tag_xdag_hash_type{
+	HASH_TYPE_SHA256D = 0,
+	HASH_TYPE_RANDOMX = 1
+} xdag_hash_type;
+
+extern xdag_hash_type get_hash_type();
+
 extern void xdag_hash(void *data, size_t size, xdag_hash_t hash);
 
 static inline int xdag_cmphash(xdag_hash_t l, xdag_hash_t r)

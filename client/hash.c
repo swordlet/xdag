@@ -7,9 +7,27 @@
 #include "algorithms/sha256.h"
 #include "hash.h"
 #include "system.h"
+#include "global.h"
 #include "mining_common.h"
 #include "utils/log.h"
 #include "rx_mine_hash.h"
+
+xdag_hash_type get_hash_type(){
+	// 挖矿算法选择原始的算法，则直接使用sha256d
+	if(g_xdag_mine_type == XDAG_RAW)
+		return HASH_TYPE_SHA256D;
+
+	// 如果使用的是randomx
+	if(g_xdag_mine_type == XDAG_RANDOMX && g_xdag_stats.nmain < g_rx_fork_height){
+		return HASH_TYPE_SHA256D;
+	}
+
+	if(g_xdag_mine_type == XDAG_RANDOMX && g_xdag_stats.nmain >= g_rx_fork_height){
+		return HASH_TYPE_RANDOMX;
+	}
+
+	return HASH_TYPE_SHA256D;
+}
 
 void xdag_hash(void *data, size_t size, xdag_hash_t hash)
 {

@@ -22,6 +22,12 @@ static std::string hash2hex(const xdag_hash_t h){
 	return buf;
 }
 
+static std::string hashlow2hex(const xdag_hashlow_t h){
+	char buf[48];
+	sprintf(buf,"%016llx%016llx%016llx",h[0],h[1],h[2]);
+	return buf;
+}
+
 static void hex2hash(std::string hex,xdag_hash_t hash){
 	string_tools::hex2bin(std::move(hex),(uint8_t*)hash);
 }
@@ -93,7 +99,7 @@ int get_rx_task_by_prehash(const xdag_hash_t prehash,rx_pool_task *task) {
 		return -1;
 	}
 	*task=it->second;
-	std::cout << "find seed " << hash2hex(it->second.seed) << " by prehash " << prehex << std::endl;
+	std::cout << "find seed " << hashlow2hex(it->second.seed) << " by prehash " << prehex << std::endl;
 	pthread_mutex_unlock(&cache_mutex);
 
 	return 0;
@@ -235,7 +241,7 @@ int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed
 			rx_pool_task task=it_info->second;
 			if(task.seqno > seqno){
 				memcpy(fields[pos].data,task.prehash,sizeof(xdag_hash_t));
-				memcpy(fields[pos+1].data,task.seed,sizeof(xdag_hash_t));
+				memcpy(fields[pos+1].data,task.seed,sizeof(xdag_hashlow_t));
 				pos+=2;
 				*filed_count+=2;
 			}
@@ -258,7 +264,7 @@ void printf_miner_rx_tasks(){
 		if(itv != task_map.end()){
 			std::cout << "\ttime: " << itv->second.task_time;
 			std::cout << "\tpre : " << hash2hex(itv->second.prehash);
-			std::cout << "\tseed : " << hash2hex(itv->second.seed);
+			std::cout << "\tseed : " << hashlow2hex(itv->second.seed);
 			std::cout << "\tlastfield: " << hash2hex(itv->second.lastfield);
 			std::cout << "\tnonce1: " << itv->second.nonce0;
 			std::cout << "\tfirst hashed: " << itv->second.hashed;
@@ -280,7 +286,7 @@ void printf_pool_rx_tasks(){
 		if(itv != task_map.end()){
 			std::cout << "\ttime: " << itv->second.task_time;
 			std::cout << "\tpre : " << hash2hex(itv->second.prehash);
-			std::cout << "\tseed : " << hash2hex(itv->second.seed);
+			std::cout << "\tseed : " << hashlow2hex(itv->second.seed);
 		}
 		std::cout << std::endl;
 	}
