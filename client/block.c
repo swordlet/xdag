@@ -1175,7 +1175,7 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 }
 
 static int get_rx_seed(xdag_hashlow_t rx_seed){
-	uint64_t seed_height = rx_seedheight(g_xdag_stats.nmain);
+	uint64_t seed_height = rx_seedheight(g_xdag_stats.nmain) + 1;
 	xd_rsdb_get_heighthash(seed_height,rx_seed);
 	return seed_height;
 }
