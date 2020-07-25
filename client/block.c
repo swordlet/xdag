@@ -1174,7 +1174,7 @@ int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t 
 	return 1;
 }
 
-static int get_rx_seed(xdag_hashlow_t rx_seed){
+static uint64_t get_rx_seed(xdag_hashlow_t rx_seed){
 	uint64_t seed_height = rx_seedheight(g_xdag_stats.nmain) + 1;
 	xd_rsdb_get_heighthash(seed_height,rx_seed);
 	return seed_height;
@@ -1187,11 +1187,13 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
 
 	seed_height = get_rx_seed(seed_hash);
+	xdag_info("rx pow get seed height %llu hash %016llx%016llx%016llx",seed_height,
+			seed_hash[0],seed_hash[1],seed_hash[2]);
 
 	rx_pool_task rx_task;
 	rx_task.task_time = MAIN_TIME(send_time);
 	rx_task.seqno = g_xdag_rx_task_seq++;
-	memcpy(rx_task.seed,seed_hash,sizeof(seed_hash));
+	memcpy(rx_task.seed,seed_hash,sizeof(xdag_hashlow_t));
 	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_task.prehash);
 	xdag_info("rx pow enqueue task seed height %llu seed %016llx%016llx%016llx",seed_height,
 	          rx_task.seed[0],rx_task.seed[1],rx_task.seed[2]);
