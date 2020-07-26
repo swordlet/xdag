@@ -240,7 +240,7 @@ xdag_amount_t xdag_get_supply(uint64_t nmain)
 static void set_main(struct block_internal *m)
 {
     xdag_amount_t amount = 0;
-    m->height = g_xdag_stats.nmain++;
+    m->height = ++g_xdag_stats.nmain;
     if (g_xdag_stats.nmain > g_xdag_stats.total_nmain) {
         g_xdag_stats.total_nmain = g_xdag_stats.nmain;
     }
@@ -1827,6 +1827,10 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	uint64_t *h = bi->hash;
 	xdag_xtime_to_string(bi->time, time_buf);
     get_remark(bi, remark);
+    int flags = bi->flags;
+    if(flags & BI_MAIN) {
+        fprintf(out, "    height: %08llu\n", bi->height);
+    }
 	fprintf(out, "      time: %s\n", time_buf);
 	fprintf(out, " timestamp: %llx\n", (unsigned long long)bi->time);
 	fprintf(out, "     flags: %x\n", bi->flags & ~BI_OURS);
@@ -1844,12 +1848,11 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	fprintf(out, "                               block as transaction: details\n");
 	fprintf(out, " direction  address                                    amount\n");
 	fprintf(out, "-----------------------------------------------------------------------------------------------------------------------------\n");
-	int flags;
+
     xdag_hash_t ref = {0};
 	pthread_mutex_lock(&block_mutex);
 	//ref = bi->ref;
     memcpy(ref, bi->ref, sizeof(ref));
-	flags = bi->flags;
 	pthread_mutex_unlock(&block_mutex);
 	if(flags & BI_REF) {
 		xdag_hash2address(ref, address);
@@ -1950,7 +1953,7 @@ static void print_block(struct block_internal *block, int print_only_addresses, 
 		xdag_xtime_to_string(block->time, time_buf);
         xdag_remark_t remark = {0};
         get_remark(block, remark);
-		fprintf(out, "%08lld   %s   %s   %-8s  %-32s\n", block->height, address, time_buf, xdag_get_block_state_info(block->flags), remark);
+		fprintf(out, "%08llu   %s   %s   %-8s  %-32s\n", block->height, address, time_buf, xdag_get_block_state_info(block->flags), remark);
 	}
 }
 
