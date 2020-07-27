@@ -16,21 +16,9 @@ extern "C"
 {
 #endif
 
-//init the seed for randomx mining
-extern int rx_mine_init_seed(void *seed_data, size_t seed_size,uint32_t init_thread_count);
-
-//get randomx mining hash,calculate the min hash
-extern void rx_mine_hash(uint32_t thread_index,const void* data,size_t data_size,void* output_hash);
-
-//alloc vms after init seed
-//extern int rx_mine_alloc_vms(uint32_t mining_thread_count);
-
-//free the resource of randomx
-extern void rx_mine_free();
-
-//extern int rx_mine_calc_first_hash(void *seed_data, size_t seed_size,void* data,size_t data_size,void* output_hash);
-
-//extern uint64_t* get_current_rx_seed();
+//init for randomx mining
+extern void rx_mine_init_flags(uint32_t init_thread_count);
+extern void rx_mine_init_dataset(void *seed_data, size_t seed_size);
 
 
 extern uint64_t xdag_rx_mine_worker_hash(xdag_hash_t pre_hash, xdag_hash_t last_field ,uint64_t *nonce,

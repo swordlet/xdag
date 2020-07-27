@@ -27,6 +27,7 @@
 #include "utils/random.h"
 #include "websocket/websocket.h"
 #include "global.h"
+#include "rx_pool_hash.h"
 
 int g_block_production_on;
 static pthread_mutex_t g_create_block_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -41,6 +42,7 @@ int32_t check_signature_out(struct block_internal*, struct xdag_public_key*, con
 static int32_t find_and_verify_signature_out(struct xdag_block*, struct xdag_public_key*, const int);
 int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
 int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
+int rx_block_new_seed(xtime_t time);
 int remove_orphan(xdag_hashlow_t);
 void add_orphan(struct block_internal*, struct xdag_block*);
 static inline size_t remark_acceptance(xdag_remark_t);
@@ -1082,8 +1084,15 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 	}
 
 	if (mining) {
-		if(g_xdag_mine_type == XDAG_RANDOMX){
-			if(!do_rx_mining(block, &pretop, send_time)) {
+		if(is_randomx_fork(send_time)) {
+			uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
+			seed_epoch -= 1; // 15:4095
+			uint64_t seed_lag = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_LAG : SEEDHASH_EPOCH_LAG;
+		    if((MAIN_TIME(send_time) & seed_epoch) == seed_lag) {
+                rx_block_new_seed(send_time);
+		    }
+
+		    if(!do_rx_mining(block, &pretop, send_time)) {
 				goto begin;
 			}
 		}else{
@@ -1190,18 +1199,14 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 
 	GetRandBytes(block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(xdag_hash_t));
 
-	//TODO:use key from pool task
-	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-	xdag_hash_t fixed_key_hash;
-	xdag_address2hash(fixed_key,fixed_key_hash);
+    struct rx_pool_mem *rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
 
 	task->task_time = MAIN_TIME(send_time);
 	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),task->task[0].data);
-	memcpy(task->task[1].data, fixed_key_hash, sizeof(fixed_key_hash)); //TODO:copy randomx key to task[1].data
+	memcpy(task->task[1].data, rx_memory->seed, sizeof(rx_memory->seed)); //TODO:copy randomx key to task[1].data
     g_xdag_pool_task_index = taskIndex;
 	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx",task->task[0].data[3],
             task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
-//    rx_pool_init_seed(fixed_key_hash, sizeof(fixed_key_hash));
 
 	while(xdag_get_xtimestamp() <= send_time) {
 		sleep(1);
@@ -2282,4 +2287,57 @@ static inline void add_ourblock(struct block_internal *nodeBlock)
     memcpy(g_ourlast_hash, nodeBlock->hash, sizeof(xdag_hashlow_t));
     xd_rsdb_put_ournext(g_ourlast_hash, pre_hash);
     xd_rsdb_put_setting(SETTING_OUR_LAST_HASH, (const char *) g_ourlast_hash, sizeof(g_ourlast_hash));
+}
+
+// load initial seed from store
+int rx_block_load_seed(xtime_t time) {
+    xtime_t seed_time = rx_seed_time(time, g_xdag_testnet);
+    int count = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
+    int i = 0;
+    struct block_internal b;
+    int retcode = 1;
+    pthread_mutex_lock(&block_mutex);
+    for (retcode = xd_rsdb_get_bi(g_top_main_chain_hash, &b);
+         !retcode && (i < count);
+         retcode = xd_rsdb_get_bi(b.link[b.max_diff_link], &b))
+    {
+        if (b.flags & BI_MAIN) {
+            if (b.time > seed_time) {
+                ++i;
+            } else {
+                pthread_mutex_unlock(&block_mutex);
+                return rx_pool_init_seed(b.hash, sizeof(b.hash), b.time);
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&block_mutex);
+    return 0;
+}
+
+// rx update to a new seed
+int rx_block_new_seed(xtime_t time) {
+    xtime_t seed_time, next_time;
+    rx_seed_times(time, &seed_time, &next_time,g_xdag_testnet);
+    int count = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_LAG : SEEDHASH_EPOCH_LAG;
+    count *= 2;
+    int i = 0;
+    struct block_internal b;
+    int retcode = 1;
+    pthread_mutex_lock(&block_mutex);
+    for (retcode = xd_rsdb_get_bi(g_top_main_chain_hash, &b);
+         !retcode && (i < count);
+         retcode = xd_rsdb_get_bi(b.link[b.max_diff_link], &b))
+    {
+        if (b.flags & BI_MAIN) {
+            if (b.time > next_time) {
+                ++i;
+            } else {
+                pthread_mutex_unlock(&block_mutex);
+                return rx_pool_update_seed(b.hash, sizeof(b.hash), b.time);
+            }
+        }
+    }
+    pthread_mutex_unlock(&block_mutex);
+    return 0;
 }

@@ -67,6 +67,9 @@ enum bi_flags {
 #define MAIN_BIG_PERIOD_LOG          21
 #define MAX_LINKS                    15
 
+#define RANDOMX_FORK_TIME           1326445 // MAIN_TIME from main era for randomx fork, 2020-09-14 12:00:00 UTC
+#define RANDOMX_TESTNET_FORK_TIME   1260479 // MAIN_TIME from test net era
+
 #define xdag_type(b, n) ((b)->field[0].type >> ((n) << 2) & 0xf)
 
 #if CHAR_BIT != 8
@@ -212,6 +215,7 @@ void xdag_connect_block(struct xdag_block *b);
 extern int xdag_get_block_info(xdag_hash_t, void *, int (*)(void*, int, xdag_hash_t, xdag_amount_t, xtime_t, uint64_t, const char*),
 							void *, int (*)(void*, const char *, xdag_hash_t, xdag_amount_t));
 
+extern int rx_block_load_seed(xtime_t time);
 
 #ifdef __cplusplus
 };

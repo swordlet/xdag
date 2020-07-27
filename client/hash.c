@@ -15,8 +15,6 @@
 #include "block.h"
 
 
-pthread_mutex_t g_rx_first_hash_mutext = PTHREAD_MUTEX_INITIALIZER;
-
 void xdag_hash(void *data, size_t size, xdag_hash_t hash)
 {
 	SHA256REF_CTX ctx;

@@ -86,6 +86,7 @@ extern xdag_time_t g_apollo_fork_time;
 
 extern int is_pool(void);
 extern int is_wallet(void);
+extern int is_randomx_fork(xtime_t);
 
 
 #endif
