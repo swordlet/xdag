@@ -20,6 +20,8 @@ extern int get_rx_task_by_idx(uint64_t index,rx_pool_task *task);
 
 extern int get_rx_task_by_prehash(const xdag_hash_t prehash,rx_pool_task *task);
 
+extern void clear_all_rx_tasks();
+
 extern int enqueue_rx_task(rx_pool_task task);
 
 extern int update_rx_task_by_prehash(const xdag_hash_t prehash,rx_pool_task task);
@@ -31,6 +33,10 @@ extern int get_rx_latest_task(rx_pool_task *task);
 extern int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* fields_count);
 
 extern int get_latest_task(struct xdag_field* fields,int *fields_count);
+
+extern void push_rx_mining_thread(pthread_t th);
+
+extern void cancel_rx_mining_threads();
 
 extern void printf_miner_rx_tasks();
 

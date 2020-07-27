@@ -377,6 +377,11 @@ int xdag_mining_start(int n_mining_threads)
 {
 	pthread_t th;
 
+	if(!g_stop_mining){
+		printf("mining already started\n");
+		return 0;
+	}
+	
 	if(n_mining_threads == g_xdag_mining_threads) {
 
 	} else if(!n_mining_threads) {

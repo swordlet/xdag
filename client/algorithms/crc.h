@@ -5,6 +5,11 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* initialization of the internal CRC-table (with memory allocation) */
 extern int crc_init(void);
 
@@ -24,5 +29,9 @@ extern unsigned crc_addFile(FILE *f, unsigned len, unsigned crc);
 
 /* calculates CRC of the file */
 #define crc_of_file(f)		crc_addFile(f,-1,0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

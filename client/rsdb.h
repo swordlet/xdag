@@ -12,6 +12,11 @@
 
 #define RSDB_KEY_LEN (1 + sizeof(xdag_hashlow_t))
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 struct merge_operator_state {
     int val;
 };
@@ -115,5 +120,9 @@ xd_rsdb_op_t xd_rsdb_delkey(const char* key, size_t klen);
 xd_rsdb_op_t xd_rsdb_del_orpblock(xdag_hashlow_t hash);
 xd_rsdb_op_t xd_rsdb_del_heighthash(uint64_t height);
 xd_rsdb_op_t xd_rsdb_merge_bi(struct block_internal* bi);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

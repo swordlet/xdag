@@ -53,9 +53,9 @@ static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_update_min_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_pick_task_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_miner_seed_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_miner_stop_cond = PTHREAD_COND_INITIALIZER;
 //static xdag_hash_t g_fixed_miner_seed;
 static xdag_hashlow_t g_miner_seed;
-int g_rx_auto_swith_pool;
 int g_rx_mining_threads;
 static int g_socket = -1, g_rx_stop_mining = 1;
 
@@ -114,17 +114,16 @@ int rx_mining_start(int n_mining_threads){
 		g_rx_stop_mining = 0;
 		g_rx_mining_threads = 0;
 	}
-
-	//TODO:use key from pool task
-//	pthread_mutex_lock(&g_miner_seed_mutex);
-//	rx_mine_init_seed(g_miner_seed, sizeof(g_miner_seed),n_mining_threads);
-//	rx_mine_alloc_vms(n_mining_threads);
-//	pthread_mutex_unlock(&g_miner_seed_mutex);
-
+	
 	while(g_rx_mining_threads < n_mining_threads) {
 		g_rx_mining_threads++;
-
-		err = pthread_create(&th, 0, rx_mining_thread, (void*)(uintptr_t)g_rx_mining_threads);
+		
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED,NULL);
+		
+		err = pthread_create(&th, &attr, rx_mining_thread, (void*)(uintptr_t)g_rx_mining_threads);
 		if(err != 0) {
 			printf("create rx_mining_thread failed, error : %s\n", strerror(err));
 			continue;
@@ -135,9 +134,23 @@ int rx_mining_start(int n_mining_threads){
 			printf("detach rx_mining_thread failed, error : %s\n", strerror(err));
 			continue;
 		}
+		push_rx_mining_thread(th);
 	}
 
 	return 0;
+}
+
+void rx_mining_stop(){
+	if(g_rx_stop_mining){
+		return;
+	}
+	
+	g_rx_stop_mining = 1;
+	cancel_rx_mining_threads();
+	xdag_info("waiting all mining threads quit");
+	pthread_cond_wait(&g_miner_stop_cond,&g_miner_seed_mutex);
+	xdag_info("rx mining stoped free vms");
+	rx_mine_free();
 }
 
 void *rx_miner_net_thread(void *arg){
@@ -151,7 +164,7 @@ void *rx_miner_net_thread(void *arg){
 	int64_t pos=0;
 	xtime_t t;
 	struct miner *m = &g_local_miner;
-
+	
 	while(!g_xdag_sync_on) {
 		sleep(1);
 	}
@@ -260,11 +273,8 @@ void *rx_miner_net_thread(void *arg){
 
 				if(!memcmp(last->data, hash, sizeof(xdag_hashlow_t))) {
 					xdag_set_balance(hash, last->amount);
-
 					atomic_store_explicit_uint_least64(&g_xdag_last_received, current_time, memory_order_relaxed);
-
 					ndata = 0;
-
 					maxndata = sizeof(struct xdag_field);
 				} else if(maxndata == 2 * sizeof(struct xdag_field)) {
 					const uint64_t task_index = g_xdag_pool_task_index + 1;
@@ -294,9 +304,12 @@ void *rx_miner_net_thread(void *arg){
 
 					if(memcmp(rt.seed,g_miner_seed,sizeof(xdag_hashlow_t))!=0){
 						pthread_mutex_lock(&g_miner_seed_mutex);
+						clear_all_rx_tasks();
+						//rx_mining_stop();
 						rx_mine_init_seed(rt.seed, sizeof(xdag_hashlow_t),4);
 						rx_mine_alloc_vms(4);
 						memcpy(g_miner_seed,rt.seed, sizeof(xdag_hashlow_t));
+						rx_mining_start(4);
 						printf("rx pow reinit seed %16llx%16llx%16llx\n",rt.seed[0],rt.seed[1],rt.seed[2]);
 						pthread_mutex_unlock(&g_miner_seed_mutex);
 					}
@@ -414,6 +427,18 @@ int rx_pick_pool(char *pool_address){
 	return 0;
 }
 
+static void mining_thread_clean(void *arg)
+{
+	static int stop_thread_count;
+	stop_thread_count++;
+	xdag_info("stoped thread count %llu clean \n",stop_thread_count);
+	if(stop_thread_count == 4){
+		xdag_info("xdag all mining thread stoped");
+		stop_thread_count = 0;
+		pthread_cond_signal(&g_miner_stop_cond);
+	}
+}
+
 static void *rx_mining_thread(void *arg)
 {
 	xdag_hash_t current_hash;
@@ -424,12 +449,14 @@ static void *rx_mining_thread(void *arg)
 	const int nthread = (int)(uintptr_t)arg;
 
 	xdag_info("start rx mining thread %lu",pthread_self());
-
+	pthread_cleanup_push(mining_thread_clean,NULL);
 	while(!g_xdag_sync_on && !g_rx_stop_mining) {
+		pthread_testcancel();
 		sleep(1);
 	}
 
 	while(!g_rx_stop_mining) {
+		pthread_testcancel();
 		// pick up a task
 		xdag_info("start pick a task");
 		if(get_rx_latest_task(&rt)==0){
@@ -465,7 +492,8 @@ static void *rx_mining_thread(void *arg)
 					memcpy(current_hash,rt.prehash,sizeof(xdag_hash_t));
 				}
 			}
-
+			
+			pthread_testcancel();
 			//do slow hash
 			xdag_hash_t output_hash;
 			xdag_rx_mine_slow_hash((uint32_t) (nthread - 1), &rt, &nonce, g_rx_mining_threads,1024, output_hash);
@@ -477,13 +505,16 @@ static void *rx_mining_thread(void *arg)
 			xdag_info("update task : rt hashed %d rt discard %d",rt.hashed,rt.discards);
 			rx_update_task_min_hash(rt,output_hash);
 			xdag_info("update task : finished");
+			pthread_testcancel();
 		}else{
+			pthread_testcancel();
 			xdag_info("task queue empty waiting ...");
 			//pthread_mutex_unlock(&g_pick_task_mutex);
 			sleep(1);
 			continue;
 		}
 	}
+	pthread_cleanup_pop(NULL);
 
 	return NULL;
 }

@@ -1178,7 +1178,6 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	seed_height = get_rx_seed(seed_hash);
 	xdag_info("rx pow get seed height %llu hash %016llx%016llx%016llx", seed_height,
 	          seed_hash[0], seed_hash[1], seed_hash[2]);
-
 	rx_pool_task rx_task;
 	rx_task.task_time = MAIN_TIME(send_time);
 	rx_task.seqno = g_xdag_rx_task_seq++;
@@ -1304,7 +1303,7 @@ static void *work_thread(void *arg) {
 		// start mining threads
 		xdag_mess("Starting mining threads...");
 		if (g_xdag_mine_type == XDAG_RANDOMX) {
-			rx_mining_start(n_mining_threads);
+			//rx_mining_start(n_mining_threads);
 		} else {
 			xdag_mining_start(n_mining_threads);
 		}

@@ -506,8 +506,8 @@ void processMiningCommand(char *nextParam, FILE *out)
 		fprintf(out, "Illegal number.\n");
 	} else {
 		if(g_xdag_mine_type == XDAG_RANDOMX){
-			rx_mining_start(nthreads);
-			fprintf(out, "%d rx mining threads running\n", g_xdag_mining_threads);
+			//rx_mining_start(nthreads);
+			//fprintf(out, "%d rx mining threads running\n", g_xdag_mining_threads);
 		}else{
 			xdag_mining_start(nthreads);
 			fprintf(out, "%d mining threads running\n", g_xdag_mining_threads);
@@ -1053,7 +1053,7 @@ void processHelpCommand(FILE *out)
 void xdagSetCountMiningTread(int miningThreadsCount)
 {
 	if(g_xdag_mine_type == XDAG_RANDOMX){
-		rx_mining_start(miningThreadsCount);
+		//rx_mining_start(miningThreadsCount);
 	}else{
 		xdag_mining_start(miningThreadsCount);
 	}

@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <iostream>
 #include <utility>
+#include <vector>
 #include "utils/string_tools.h"
 #include "utils/log.h"
 #include "mining_common.h"
@@ -11,6 +12,7 @@
 
 #define RX_MAX_CACHE_TASK_SIZE 4
 
+static std::vector<pthread_t> g_mining_threads;
 static std::deque<std::string> task_deque;
 static std::map<std::string,rx_pool_task> task_map;
 
@@ -158,6 +160,17 @@ int enqueue_rx_task(rx_pool_task t){
 }
 
 /**
+ * clear the task
+ * */
+void clear_all_rx_tasks(){
+	pthread_mutex_lock(&cache_mutex);
+	task_map.clear();
+	task_deque.clear();
+	pthread_mutex_unlock(&cache_mutex);
+	xdag_info("clear all the tasks ");
+}
+
+/**
  * pop rx task from deque and erase it from map
  * */
 int pop_rx_task(){
@@ -277,6 +290,27 @@ int get_latest_task(struct xdag_field* fields,int* fields_count){
 	
 	pthread_mutex_unlock(&cache_mutex);
 	return 0;
+}
+
+void push_rx_mining_thread(pthread_t th){
+	pthread_mutex_lock(&cache_mutex);
+	std::cout << "push rx mining thread " << th << std::endl;
+	g_mining_threads.emplace_back(th);
+	pthread_mutex_unlock(&cache_mutex);
+}
+
+void cancel_rx_mining_threads(){
+	pthread_mutex_lock(&cache_mutex);
+	std::cout << "stop mining ...." << std::endl;
+	auto it = g_mining_threads.begin();
+	while(it != g_mining_threads.end()){
+		pthread_cancel(*it);
+		pthread_join(*it,NULL);
+		it++;
+	}
+	g_mining_threads.clear();
+	pthread_mutex_unlock(&cache_mutex);
+	std::cout << "mining stopped ...." << std::endl;
 }
 
 /**

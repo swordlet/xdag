@@ -24,6 +24,9 @@ extern int g_rx_auto_swith_pool;
 /* a number of mining threads */
 extern int g_rx_mining_threads;
 
+/* stop mining*/
+extern void rx_mining_stop();
+
 /* changes the number of mining threads */
 extern int rx_mining_start(int n_mining_threads);
 

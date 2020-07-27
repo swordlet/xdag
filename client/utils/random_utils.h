@@ -8,14 +8,25 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* Seed OpenSSL PRNG with additional entropy data */
 void RandAddSeed(void);
 
 /**
  * Functions to gather random data via the OpenSSL PRNG
  */
-void GetRandBytes(void* buf, int num);
+void GetRandBytes(void *buf, int num);
+
 uint64_t GetRand(uint64_t nMax);
+
 int GetRandInt(int nMax);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RANDOM_H
