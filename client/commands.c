@@ -465,10 +465,10 @@ void processBlockCommandByHeight(char *nextParam, FILE *out)
 	} else {
 		xdag_hashlow_t hash = {0};
 		if(!xd_rsdb_get_heighthash(blocksHeight, hash)) {
-            struct block_internal b;
-            xdag_print_block_info(hash, out);
+			struct block_internal b;
+			xdag_print_block_info(hash, out);
 		} else {
-            fprintf(out, "con't find block.\n");
+			fprintf(out, "con't find block.\n");
 		}
 	}
 }

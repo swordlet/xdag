@@ -25,7 +25,7 @@ extern int rx_mine_alloc_vms(uint32_t mining_thread_count);
 //free the resource of randomx
 extern void rx_mine_free();
 
-extern uint64_t* get_current_rx_seed();
+//extern uint64_t* get_current_rx_seed();
 
 #ifdef __cplusplus
 }

@@ -28,7 +28,9 @@ extern int get_rx_latest_prehash(xdag_hash_t prehash);
 
 extern int get_rx_latest_task(rx_pool_task *task);
 
-extern int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed_count);
+extern int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* fields_count);
+
+extern int get_latest_task(struct xdag_field* fields,int *fields_count);
 
 extern void printf_miner_rx_tasks();
 

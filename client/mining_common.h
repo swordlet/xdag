@@ -56,6 +56,8 @@ extern int xdag_initialize_mining(const char *pool_arg, const char *miner_addres
 //function sets minimal share for the task
 extern void xdag_set_min_share(struct xdag_pool_task *task, xdag_hash_t last, xdag_hash_t hash);
 
+extern uint64_t get_rx_seed(xdag_hashlow_t rx_seed);
+
 #ifdef __cplusplus
 };
 #endif

@@ -99,7 +99,7 @@ int get_rx_task_by_prehash(const xdag_hash_t prehash,rx_pool_task *task) {
 		return -1;
 	}
 	*task=it->second;
-	std::cout << "find seed " << hashlow2hex(it->second.seed) << " by prehash " << prehex << std::endl;
+	//std::cout << "find seed " << hashlow2hex(it->second.seed) << " by prehash " << prehex << std::endl;
 	pthread_mutex_unlock(&cache_mutex);
 
 	return 0;
@@ -144,7 +144,7 @@ int enqueue_rx_task(rx_pool_task t){
 	if(task_deque.size() >= RX_MAX_CACHE_TASK_SIZE){
 		while(task_deque.size() >= RX_MAX_CACHE_TASK_SIZE){
 			std::string front_hash=task_deque.front();
-			std::cout << "task queue is full, pop front hash "<< front_hash <<" of rx task queue" << std::endl;
+			//std::cout << "task queue is full, pop front hash "<< front_hash <<" of rx task queue" << std::endl;
 			task_deque.pop_front();
 			task_map.erase(front_hash);
 		}
@@ -224,12 +224,12 @@ int get_rx_latest_task(rx_pool_task *task){
 	return 0;
 }
 
-int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed_count){
+int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* fields_count){
 	pthread_mutex_lock(&cache_mutex);
 
 	if(task_deque.empty() || task_map.empty()){
 		xdag_info("rx task cache: deque or task info map empty");
-		*filed_count=0;
+		*fields_count=0;
 		pthread_mutex_unlock(&cache_mutex);
 		return -1;
 	}
@@ -243,11 +243,38 @@ int get_remain_task_by_seqno(uint64_t seqno,struct xdag_field* fields,int* filed
 				memcpy(fields[pos].data,task.prehash,sizeof(xdag_hash_t));
 				memcpy(fields[pos+1].data,task.seed,sizeof(xdag_hashlow_t));
 				pos+=2;
-				*filed_count+=2;
+				*fields_count+=2;
 			}
 		}
 	}
 
+	pthread_mutex_unlock(&cache_mutex);
+	return 0;
+}
+
+int get_latest_task(struct xdag_field* fields,int* fields_count){
+	pthread_mutex_lock(&cache_mutex);
+	
+	if(task_deque.empty() || task_map.empty()){
+		xdag_info("rx task cache: deque or task info map empty");
+		*fields_count=0;
+		pthread_mutex_unlock(&cache_mutex);
+		return -1;
+	}
+	
+	auto it_prehash=task_deque.back();
+	auto it_info=task_map.find(it_prehash);
+	if(it_info==task_map.end()){
+		xdag_info("can not find latest block by prehash %s",it_prehash.c_str());
+		*fields_count=0;
+		pthread_mutex_unlock(&cache_mutex);
+		return -1;
+	}
+	*fields_count=2;
+	rx_pool_task task=it_info->second;
+	memcpy(fields[0].data,task.prehash,sizeof(xdag_hash_t));
+	memcpy(fields[1].data,task.seed,sizeof(xdag_hashlow_t));
+	
 	pthread_mutex_unlock(&cache_mutex);
 	return 0;
 }

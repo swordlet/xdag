@@ -861,7 +861,7 @@ static int share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t shar
 }
 
 static int rx_share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t prehash,
-		xdag_hash_t seed, xdag_hash_t share,rx_pool_task* task)
+		xdag_hashlow_t seed, xdag_hash_t share,rx_pool_task* task)
 {
 	xdag_hashlow_t seedhash;
 	if(!miner) {
@@ -877,10 +877,10 @@ static int rx_share_can_be_accepted(struct miner_pool_data *miner, xdag_hash_t p
 	}
 
 	// check seed is match current pool seed
-	get_current_rx_seed((char*)seedhash);
-	if(memcmp(seedhash,task->seed, sizeof(xdag_hashlow_t))){
-		xdag_info("rx pow miner seed %016llx%016llx%016llx not match current pool seed",
-				seed[0],seed[1],seed[2]);
+	get_rx_seed(seedhash);
+	if(memcmp(seedhash,seed, sizeof(xdag_hashlow_t))!=0){
+		xdag_info("rx pow miner seed %016llx%016llx%016llx not match current pool seed %016llx%016llx%016llx",
+				seed[0],seed[1],seed[2],seedhash[0],seedhash[1],seedhash[2]);
 		return 0;
 	}
 
@@ -972,18 +972,19 @@ static int is_worker_name_received(connection_list_element *connection)
 
 static int process_rx_pow(connection_list_element *connection){
 
-	xdag_hash_t seed,prehash;
+	xdag_hashlow_t seed;
+	xdag_hash_t prehash;
 	struct xdag_field lastfield;
 
 	struct connection_pool_data *conn_data = &connection->connection_data;
 	struct rx_pow_block *pow = conn_data->rx_pow;
 
 	memcpy(prehash,pow->field[1].data,sizeof(xdag_hash_t));
-	memcpy(seed,pow->field[2].data,sizeof(xdag_hash_t));
+	memcpy(seed,pow->field[2].data,sizeof(xdag_hashlow_t));
 	memcpy(lastfield.data,pow->field[3].data,sizeof(xdag_hash_t));
 
 	xdag_info("rx pow pre: %016llx%016llx%016llx%016llx",prehash[0],prehash[1],prehash[2],prehash[3]);
-	xdag_info("rx pow seed: %016llx%016llx%016llx%016llx",seed[0],prehash[1],seed[2],seed[3]);
+	xdag_info("rx pow seed: %016llx%016llx%016llx",seed[0],seed[1],seed[2]);
 	xdag_info("rx pow last: %016llx%016llx%016llx%016llx",lastfield.data[0],lastfield.data[1],lastfield.data[2],lastfield.data[3]);
 
 	if(++conn_data->shares_count > SHARES_PER_TASK_LIMIT) {   //if shares count limit is exceded it is considered as spamming and current connection is disconnected
@@ -1012,28 +1013,28 @@ static int process_rx_pow(connection_list_element *connection){
 	rx_pool_task task;
 	if(rx_share_can_be_accepted(conn_data->miner, prehash, seed, lastfield.data,&task)) {
 		xdag_hash_t hash;
-		xdag_hash_t seedhash;
+		xdag_hashlow_t seedhash;
 		uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 		memcpy(rx_task_data,prehash,sizeof(xdag_hash_t));
 		memcpy(rx_task_data+sizeof(xdag_hash_t),lastfield.data,sizeof(xdag_hash_t));
 		uint64_t *d=(uint64_t*)lastfield.data;
 		uint64_t *td=(uint64_t*)rx_task_data;
 
-		//rx_pool_calc_hash(g_fixed_pool_seed, sizeof(g_fixed_pool_seed), rx_task_data, sizeof(rx_task_data), hash);
-		get_current_rx_seed(seedhash);
+		get_rx_seed(seedhash);
 		rx_slow_hashs((const char*)seedhash,rx_task_data,sizeof(rx_task_data),(uint8_t*)hash);
 
 		xdag_info("rx pow data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
 		          td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
 		xdag_info("rx pow accept pre %016llx%016llx%016llx%016llx",prehash[0],prehash[1],prehash[2],prehash[3]);
-		xdag_info("rx pow share %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
+		xdag_info("rx pow accept seed %016llx%016llx%016llx",seedhash[0],seedhash[1],seedhash[2]);
+		xdag_info("rx pow accept share %016llx%016llx%016llx%016llx from miner",hash[0],hash[1],hash[2],hash[3]);
 
 		//xdag_set_min_share(task, conn_data->miner->id.data, hash);
 		rx_update_mean_log_diff(conn_data, task.task_time, hash);
 		rx_calculate_nopaid_shares(conn_data, task.task_time, hash);
 	}else{
 		xdag_info("rx pow reject pre %016llx%016llx%016llx%016llx",prehash[0],prehash[1],prehash[2],prehash[3]);
-		xdag_info("rx pow reject seed %016llx%016llx%016llx%016llx",seed[0],seed[1],seed[2],seed[3]);
+		xdag_info("rx pow reject seed %016llx%016llx%016llx",seed[0],seed[1],seed[2]);
 		xdag_info("rx pow reject last %016llx%016llx%016llx%016llx",lastfield.data[0],lastfield.data[1],lastfield.data[2],lastfield.data[3]);
 	}
 	return 1;
@@ -1135,16 +1136,17 @@ static int receive_data_from_connection(connection_list_element *connection)
 
 static int send_data_to_connection(connection_list_element *connection, int *processed)
 {
-	struct xdag_field data[8];
-	memset(data, 0, sizeof(struct xdag_field) * 8);
+	struct xdag_field data[2];
+	memset(data, 0, sizeof(struct xdag_field) * 2);
 	int fields_count = 0;
 	struct connection_pool_data *conn_data = &connection->connection_data;
 	time_t current_time = time(0);
 
 	if(conn_data->last_rx_task_seqno < g_xdag_rx_task_seq) {
 		conn_data->shares_count = 0;
-		get_remain_task_by_seqno(conn_data->last_rx_task_seqno,data,&fields_count);
-		xdag_info("get remain task by seqno %llu get fields count %d",conn_data->last_rx_task_seqno,fields_count);
+		//get_remain_task_by_seqno(conn_data->last_rx_task_seqno,data,&fields_count);
+		get_latest_task(data,&fields_count);
+		xdag_info("get remain task by seqno %llu get fields count %d", conn_data->last_rx_task_seqno, fields_count);
 	} else if(conn_data->miner && current_time - conn_data->balance_refreshed_time >= 10) {  //refresh balance each 10 seconds
 		conn_data->balance_refreshed_time = current_time;
 		memcpy(data[0].data, conn_data->miner->id.data, sizeof(xdag_hash_t));

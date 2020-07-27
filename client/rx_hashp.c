@@ -45,7 +45,7 @@
 // 记录并行计算的randomx状态的结构体
 typedef struct tag_rx_state {
 	CTHR_MUTEX_TYPE rs_mutex;
-	char rs_hash[RX_HASH_SIZE];       // randomx全局的种子hash
+	char rs_hash[RX_SEED_SIZE];       // randomx全局的种子hash
 	uint64_t  rs_height;              // randomx的种子高度
 	randomx_cache *rs_cache;          // randomx的全局cache
 } rxp_state;
@@ -187,7 +187,7 @@ void rx_slow_hashp(const uint64_t mainheight, const uint64_t seedheight, const c
 		// 如果分叉链的种子高度跟当前主链的一致并且当前区块的高度大于2048，并且参数seedhash和rx_s[1]一致，则继续使用rx_s[1]做randomx哈希运算
 		// 如果分叉链的种子高度跟当前珠链的不一致或者  (当前高度小于2048并且seedhash和rx_s[0]不一致)，则切换使用rx_s[1]做randomx哈希运算
 		// 如果分叉链的种子高度跟当前珠链的不一致或者  (当前高度大于2048并且seedhash和rx_s[1]不一致)，则切换使用rx_s[1]做randomx哈希运算
-		if (s_height == seedheight && !memcmp(rx_s[toggle].rs_hash, seedhash, RX_HASH_SIZE))
+		if (s_height == seedheight && !memcmp(rx_s[toggle].rs_hash, seedhash, RX_SEED_SIZE))
 			is_alt = 0;
 	} else {
 		// 如果调用方要计算的是主链的块的哈希
@@ -235,16 +235,16 @@ void rx_slow_hashp(const uint64_t mainheight, const uint64_t seedheight, const c
 
 	// 如果调用该函数传入的参数，包括高度，种子，缓存跟选定的rx_stae不一致
 	// 则重新初始化cache，并重新记录cache和种子高度到缓存状态
-	int res_seedcmp = memcmp(seedhash, rx_sp->rs_hash, RX_HASH_SIZE);
+	int res_seedcmp = memcmp(seedhash, rx_sp->rs_hash, RX_SEED_SIZE);
 	if (rx_sp->rs_height != seedheight || rx_sp->rs_cache == NULL || res_seedcmp) {
 		// 如果原来已经分配了cache
 //		if(rx_sp->rs_cache != NULL)
 //			randomx_release_cache(rx_sp->rs_cache);
 
-		randomx_init_cache(cache, seedhash, RX_HASH_SIZE);
+		randomx_init_cache(cache, seedhash, RX_SEED_SIZE);
 		rx_sp->rs_cache = cache;
 		rx_sp->rs_height = seedheight;
-		memcpy(rx_sp->rs_hash, seedhash, RX_HASH_SIZE);
+		memcpy(rx_sp->rs_hash, seedhash, RX_SEED_SIZE);
 	}
 
 	// 如果vm为空

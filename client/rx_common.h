@@ -19,6 +19,7 @@ extern "C"
 #endif
 
 #define RX_HASH_SIZE 32
+#define RX_SEED_SIZE 24
 #define RX_HASH_DATA_AREA 136
 #define SEEDHASH_EPOCH_BLOCKS	4096
 #define SEEDHASH_EPOCH_LAG		128

@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include "rx_mine_hash.h"
 #include "rx_mine_cache.h"
+#include "utils/string_utils.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -51,7 +52,9 @@ static struct miner g_local_miner;
 static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_update_min_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_pick_task_mutex = PTHREAD_MUTEX_INITIALIZER;
-static xdag_hash_t g_fixed_miner_seed;
+static pthread_mutex_t g_miner_seed_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static xdag_hash_t g_fixed_miner_seed;
+static xdag_hashlow_t g_miner_seed;
 int g_rx_auto_swith_pool;
 int g_rx_mining_threads;
 static int g_socket = -1, g_rx_stop_mining = 1;
@@ -113,13 +116,10 @@ int rx_mining_start(int n_mining_threads){
 	}
 
 	//TODO:use key from pool task
-	xdag_info("rx mining start init mine seed");
-	const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-	xdag_address2hash(fixed_key,g_fixed_miner_seed);
-	xdag_info("rx init fixed seed %016llx%016llx%016llx%016llx",
-	          g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
-	rx_mine_init_seed(g_fixed_miner_seed, sizeof(g_fixed_miner_seed),n_mining_threads);
-	rx_mine_alloc_vms(n_mining_threads);
+//	pthread_mutex_lock(&g_miner_seed_mutex);
+//	rx_mine_init_seed(g_miner_seed, sizeof(g_miner_seed),n_mining_threads);
+//	rx_mine_alloc_vms(n_mining_threads);
+//	pthread_mutex_unlock(&g_miner_seed_mutex);
 
 	while(g_rx_mining_threads < n_mining_threads) {
 		g_rx_mining_threads++;
@@ -291,6 +291,15 @@ void *rx_miner_net_thread(void *arg){
 					memcpy(rt.seed,data[1].data, sizeof(xdag_hashlow_t));
 					memcpy(rt.lastfield,hash,sizeof(xdag_hashlow_t));
 					memset(rt.minhash,0xff,sizeof(xdag_hash_t));
+
+					if(memcmp(rt.seed,g_miner_seed,sizeof(xdag_hashlow_t))!=0){
+						pthread_mutex_lock(&g_miner_seed_mutex);
+						rx_mine_init_seed(rt.seed, sizeof(xdag_hashlow_t),4);
+						rx_mine_alloc_vms(4);
+						memcpy(g_miner_seed,rt.seed, sizeof(xdag_hashlow_t));
+						printf("rx pow reinit seed %16llx%16llx%16llx\n",rt.seed[0],rt.seed[1],rt.seed[2]);
+						pthread_mutex_unlock(&g_miner_seed_mutex);
+					}
 					enqueue_rx_task(rt);
 
 					xdag_info("enqueue rx pre : %016llx%016llx%016llx%016llx",rt.prehash[0],rt.prehash[1],rt.prehash[2],rt.prehash[3]);
@@ -327,8 +336,8 @@ void *rx_miner_net_thread(void *arg){
 						}
 						xdag_info("rx pow share pre %016llx%016llx%016llx%016llx",
 						          rt.prehash[0], rt.prehash[1], rt.prehash[2], rt.prehash[3]);
-						xdag_info("rx pow share seed %016llx%016llx%016llx%016llx",
-								g_fixed_miner_seed[0],g_fixed_miner_seed[1],g_fixed_miner_seed[2],g_fixed_miner_seed[3]);
+						xdag_info("rx pow share seed %016llx%016llx%016llx",
+								rt.seed[0],rt.seed[1],rt.seed[2]);
 						xdag_info("rx pow share last %016llx%016llx%016llx%016llx",
 								rt.lastfield[0],rt.lastfield[1],rt.lastfield[2],rt.lastfield[3]);
 						xdag_info("rx pow share hash: %016llx%016llx%016llx%016llx t=%llx res=%d",
@@ -461,7 +470,7 @@ static void *rx_mining_thread(void *arg)
 			xdag_hash_t output_hash;
 			xdag_rx_mine_slow_hash((uint32_t) (nthread - 1), &rt, &nonce, g_rx_mining_threads,1024, output_hash);
 
-			g_xdag_extstats.nhashes += 1024;
+			g_xdag_extstats.nhashes += 4096;
 			xd_rsdb_put_extstats();
 
 			//update the task min hash
@@ -560,11 +569,6 @@ static int rx_send_to_pool(struct xdag_field *fld, int nfld)
 		xdag_info("Sent  : %016llx%016llx%016llx%016llx t=%llx res=%d",
 		          h[3], h[2], h[1], h[0], fld[0].time, 0);
 	}
-
-//	if(nfld == RX_POW_FIELDS) {
-//		xdag_info("sent rx pre hash  : %016llx%016llx%016llx%016llx t=%llx res=%d",
-//		          fld[1].data[0], fld[1].data[1], fld[1].data[2], fld[1].data[3], fld[0].time, 0);
-//	}
-
+	
 	return 0;
 }

@@ -9,6 +9,7 @@
 #include "../dfslib/dfslib_crypt.h"
 #include "rx_miner.h"
 #include "rx_pool.h"
+#include "rx_common.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -96,4 +97,10 @@ void xdag_set_min_share(struct xdag_pool_task *task, xdag_hash_t last, xdag_hash
 
 		pthread_mutex_unlock(&g_share_mutex);
 	}
+}
+
+uint64_t get_rx_seed(xdag_hashlow_t rx_seed){
+	uint64_t seed_height = rx_seedheight(g_xdag_stats.nmain) + 1;
+	xd_rsdb_get_heighthash(seed_height,rx_seed);
+	return seed_height;
 }

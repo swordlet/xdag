@@ -11,11 +11,12 @@
 #include <randomx.h>
 #include "rx_hashs.h"
 #include "rx_common.h"
+#include "utils/log.h"
 
 // 记录并行计算的randomx状态的结构体
 typedef struct tag_rxs_state {
 	CTHR_MUTEX_TYPE state_mutex;      // 访问全局rxs_state的锁
-	char rs_hash[RX_HASH_SIZE];       // randomx全局的种子hash
+	char rs_hash[RX_SEED_SIZE];       // randomx全局的种子hash
 	randomx_cache *rs_cache;          // randomx的全局cache
 } rxs_state;
 
@@ -46,7 +47,7 @@ void rx_hashs_get_seed(char* seedhash){
 	if(seedhash == NULL){
 		local_abort("can not get rx state seed with null ptr");
 	}
-	memcpy(seedhash,rx_state.rs_hash,RX_HASH_SIZE);
+	memcpy(seedhash, rx_state.rs_hash, RX_SEED_SIZE);
 }
 
 static CTHR_THREAD_RTYPE rx_seedthread(void *arg) {
@@ -114,6 +115,9 @@ static void rx_initdata(randomx_cache *rs_cache, const int miners) {
  */
 void rx_slow_hashs(const char *seedhash, const void *data, size_t length, uint8_t *hash) {
 
+	uint64_t *seed=(uint64_t *)seedhash;
+	xdag_info("rx pow slow hashs seed : %016llx%016llx%016llx",seed[0],seed[1],seed[2]);
+
 	// 默认初始化dataset的线程个数为4个
 	int miners=RX_DATASET_INIT_THREAD_COUNT;
 
@@ -138,12 +142,13 @@ void rx_slow_hashs(const char *seedhash, const void *data, size_t length, uint8_
 	}
 
 	// 如果randomx cache为空，或者调用函数传入的种子跟当前的种子不一致
-	bool seed_same = memcmp(seedhash, rx_sp->rs_hash, RX_HASH_SIZE)==0;
+	bool seed_same = memcmp(seedhash, rx_sp->rs_hash, RX_SEED_SIZE) == 0;
 	if (rx_sp->rs_cache == NULL || !seed_same) {
 		// 初始化cache
-		randomx_init_cache(cache, seedhash, RX_HASH_SIZE);
+		xdag_info("rx pow slow hashs init cache with seed : %016llx%016llx%016llx",seed[0],seed[1],seed[2]);
+		randomx_init_cache(cache, seedhash, RX_SEED_SIZE);
 		rx_sp->rs_cache = cache;
-		memcpy(rx_sp->rs_hash, seedhash, RX_HASH_SIZE);
+		memcpy(rx_sp->rs_hash, seedhash, RX_SEED_SIZE);
 	}
 
 	// 如果vm为空

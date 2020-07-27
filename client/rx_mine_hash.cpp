@@ -253,6 +253,6 @@ void rx_mine_free() {
 	}
 }
 
-uint64_t* get_current_rx_seed(){
-	return g_current_miner_seed;
-}
+//uint64_t* get_current_rx_seed(){
+//	return g_current_miner_seed;
+//}
