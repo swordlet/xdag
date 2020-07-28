@@ -3,17 +3,10 @@
 #include <string.h>
 #ifdef SHA256_OPENSSL_MBLOCK
 #include <arpa/inet.h>
-#include "utils/log.h"
-#include <pthread.h>
-
 #endif
-#include <randomx.h>
 #include "algorithms/sha256.h"
 #include "hash.h"
-#include "rx_mine_hash.h"
 #include "system.h"
-#include "block.h"
-
 
 void xdag_hash(void *data, size_t size, xdag_hash_t hash)
 {
@@ -220,72 +213,3 @@ void xdag_rx_pre_hash(void *data, size_t size, xdag_hash_t hash)
 	sha256_update(&ctx, (uint8_t*)data, size);
 	sha256_final(&ctx, (uint8_t*)hash);
 }
-
-//uint64_t xdag_rx_mine_first_hash(void* seed,size_t seed_size,xdag_hash_t *pre_hash,void *last_field , uint64_t *nonce,xdag_hash_t output_hash){
-//
-//	//pthread_mutex_lock(&g_rx_first_hash_mutext);
-//	struct xdag_field field0;
-//	struct xdag_field *field=(struct xdag_field*)last_field;
-//	field->amount=*nonce;
-//
-//	memcpy(&field0,field,sizeof(struct xdag_field));
-//	uint8_t data2hash[sizeof(xdag_hash_t)+sizeof(struct xdag_field)];
-//	memcpy(data2hash,pre_hash,sizeof(xdag_hash_t));
-//	memcpy(data2hash+sizeof(xdag_hash_t),&field0,sizeof(struct xdag_field));
-//
-//	rx_mine_calc_first_hash(seed,seed_size,data2hash, sizeof(data2hash), output_hash);
-//	//pthread_mutex_unlock(&g_rx_first_hash_mutext);
-//	return *nonce;
-//}
-
-//uint64_t xdag_rx_mine_slow_hash(uint32_t thread_index,xdag_hash_t pre_hash,void *last_field , uint64_t *nonce,
-//                                       uint64_t attemps,xdag_hash_t output_hash){
-//
-//	int pos=0;
-//	xdag_hash_t hash0;
-//	uint64_t nonce0=*nonce;
-//	uint64_t min_nonce=nonce0;
-//	struct xdag_field field0;
-//	struct xdag_field *field=(struct xdag_field*)last_field;
-//	field->amount=min_nonce;
-//
-//	memcpy(&field0,field,sizeof(struct xdag_field));
-//	uint8_t data2hash[sizeof(xdag_hash_t)+sizeof(struct xdag_field)];
-//	memcpy(data2hash,pre_hash,sizeof(xdag_hash_t));
-//	memcpy(data2hash+sizeof(xdag_hash_t),&field0,sizeof(struct xdag_field));
-//
-//	rx_mine_hash(thread_index,data2hash, sizeof(data2hash), output_hash);
-//	xdag_info("####### rx first %016llx%016llx%016llx%016llx",output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
-//
-////	nonce0 += thread_index * attemps;
-//	for(int i=0;i < attemps;i++)
-//	{
-//		field0.amount=nonce0;
-//		memcpy(data2hash+sizeof(xdag_hash_t),&field0,sizeof(struct xdag_field));
-//		rx_mine_hash(thread_index,data2hash, sizeof(data2hash), hash0);
-//		if(xdag_cmphash(hash0,output_hash) < 0)
-//		{
-//			memcpy(output_hash, hash0, sizeof(xdag_hash_t));
-//			min_nonce = nonce0;
-////			field->amount=min_nonce;
-////			xdag_info("rx next %016llx%016llx%016llx%016llx find min hash %016llx%016llx%016llx%016llx",
-////			          pre_hash[0],pre_hash[1],pre_hash[2],pre_hash[3],
-////			          output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
-////			xdag_info("rx min nonce %016llx",min_nonce);
-//		}
-//		nonce0+=1;
-//		*nonce += 1;
-//
-//	}
-//
-//	field->amount=min_nonce;
-//	memcpy(data2hash+sizeof(xdag_hash_t),field,sizeof(struct xdag_field));
-//	rx_mine_hash(thread_index,data2hash, sizeof(data2hash), output_hash);
-//
-//	xdag_info("*#*# rx final min hash %016llx%016llx%016llx%016llx",
-//	          output_hash[0],output_hash[1],output_hash[2],output_hash[3]);
-//	xdag_info("*#*# rx final min nonce %016llx",min_nonce);
-//
-//	return min_nonce;
-//}
-

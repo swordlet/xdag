@@ -19,7 +19,9 @@
 
 struct rx_pool_mem {
     xdag_hash_t seed;
-    xtime_t s_time;
+    uint64_t height;
+    xtime_t seed_time;
+    xtime_t switch_time;
     randomx_cache * rx_cache;
     randomx_dataset *rx_dataset;
 };

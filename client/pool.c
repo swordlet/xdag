@@ -147,7 +147,6 @@ static uint32_t g_connections_per_miner_limit = DEFAUL_CONNECTIONS_PER_MINER_LIM
 static uint32_t g_connections_count = 0;
 static double g_pool_fee = 0, g_pool_reward = 0, g_pool_direct = 0, g_pool_fund = 0;
 static struct xdag_block *g_firstb = 0, *g_lastb = 0;
-static xdag_hash_t g_fixed_pool_seed;
 
 static int g_stop_general_mining = 1;
 extern int g_block_production_on;
@@ -899,7 +898,7 @@ static int process_received_share(connection_list_element *connection)
 
 	if(share_can_be_accepted(conn_data->miner, (uint64_t*)conn_data->data, task_index)) {
 		xdag_hash_t hash;
-		if(g_xdag_mine_type == XDAG_RANDOMX){
+		if(is_randomx_fork(task->task_time)){
 			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
 			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));

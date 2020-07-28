@@ -284,7 +284,7 @@ begin:
                     memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
                     memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
 
-                    if(g_xdag_mine_type==XDAG_RANDOMX) {
+                    if(is_randomx_fork(task->task_time)) {
                         xdag_info("### new task ###");
                         memcpy(task->task[0].data,data[0].data, sizeof(xdag_hash_t));
                         memcpy(task->task[1].data,data[1].data,sizeof(xdag_hash_t));
@@ -394,7 +394,7 @@ static void *mining_thread(void *arg)
             xdag_info("### new pre hash to slow hash %016llx%016llx%016llx%016llx",task->task[0].data[3],
                       task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
 		}
-        if(g_xdag_mine_type==XDAG_RANDOMX){
+        if(is_randomx_fork(xdag_get_frame())){
             last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 1024,
                                 g_xdag_mining_threads, hash);
             g_xdag_extstats.nhashes += 1024;

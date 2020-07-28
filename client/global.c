@@ -20,8 +20,8 @@ xdag_amount_t g_balance = 0;
 
 inline int is_pool(void) { return g_xdag_type == XDAG_POOL; }
 inline int is_wallet(void) { return g_xdag_type == XDAG_WALLET; }
-inline int is_randomx_fork(xtime_t t) {
-    uint64_t nmain = MAIN_TIME(t) - xdag_get_start_frame();
-    return (g_xdag_type == XDAG_RANDOMX &&
+inline int is_randomx_fork(xdag_frame_t t) {
+    uint64_t nmain = t - xdag_get_start_frame();
+    return (g_xdag_mine_type == XDAG_RANDOMX &&
         nmain > g_xdag_testnet? RANDOMX_TESTNET_FORK_TIME:RANDOMX_FORK_TIME);
 }

@@ -10,14 +10,14 @@
 #endif
 
 #define DATA_SIZE          (sizeof(struct xdag_field) / sizeof(uint32_t))
-#define RX_DATA_SIZE       DATA_SIZE * 2
+//#define RX_DATA_SIZE       DATA_SIZE * 2
 #define BLOCK_HEADER_WORD  0x3fca9e2bu
 
 struct xdag_pool_task {
 	struct xdag_field task[2], lastfield, minhash, nonce;
 	xdag_frame_t task_time;
 	void *ctx0, *ctx;
-	int slow_hash_ready;
+//	int slow_hash_ready;
 };
 
 #ifdef __cplusplus

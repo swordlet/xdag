@@ -96,6 +96,7 @@ static uint64_t apply_block(struct block_internal *bi)
 				continue;
 			}
 			memcpy(lbi.ref, bi->hash, sizeof(xdag_hashlow_t));
+            xd_rsdb_merge_bi(&lbi);
 			if (bi->amount + ref_amount >= bi->amount) {
 				accept_amount(bi, ref_amount);
 			}
@@ -184,20 +185,6 @@ static uint64_t unapply_block(struct block_internal* bi)
 	return (xdag_amount_t)0 - bi->fee;
 }
 
-static xdag_amount_t get_start_amount_with_time(xdag_time_t time, uint64_t nmain) {
-    xdag_amount_t start_amount = 0;
-    uint64_t fork_height = g_xdag_testnet ? MAIN_APOLLO_TESTNET_HEIGHT:MAIN_APOLLO_HEIGHT;
-    if(nmain >= fork_height) {
-        if(g_apollo_fork_time == 0) {
-            g_apollo_fork_time = time;
-        }
-        start_amount = MAIN_APOLLO_AMOUNT;
-    } else {
-        start_amount = MAIN_START_AMOUNT;
-    }
-    return start_amount;
-}
-
 static xdag_amount_t get_start_amount(uint64_t nmain) {
     xdag_amount_t start_amount = 0;
     uint64_t fork_height = g_xdag_testnet ? MAIN_APOLLO_TESTNET_HEIGHT:MAIN_APOLLO_HEIGHT;
@@ -209,25 +196,24 @@ static xdag_amount_t get_start_amount(uint64_t nmain) {
     return start_amount;
 }
 
-static xdag_amount_t get_block_earning(xdag_time_t time) {
+static xdag_amount_t get_block_earning(uint64_t nmain) {
     xdag_amount_t amount = 0;
     xdag_amount_t start_amount = 0;
-    uint64_t nmain = 0;
-
-    if(g_apollo_fork_time && time >= g_apollo_fork_time) {
-        nmain = g_xdag_testnet? MAIN_APOLLO_TESTNET_HEIGHT:MAIN_APOLLO_HEIGHT;
-        nmain = nmain > MAIN_TIME(time) ? nmain: MAIN_TIME(time);
-    }
+//    uint64_t nmain = 0;
+//    if(g_apollo_fork_time && time >= g_apollo_fork_time) {
+//        nmain = g_xdag_testnet? MAIN_APOLLO_TESTNET_HEIGHT:MAIN_APOLLO_HEIGHT;
+//        nmain = nmain > MAIN_TIME(time) ? nmain: MAIN_TIME(time);
+//    }
     start_amount = get_start_amount(nmain);
     amount = start_amount >> (nmain >> MAIN_BIG_PERIOD_LOG);
     return amount;
 }
 
-static xdag_amount_t get_amount(xdag_time_t time, uint64_t nmain) {
+static xdag_amount_t get_amount(uint64_t nmain) {
     xdag_amount_t amount = 0;
     xdag_amount_t start_amount = 0;
     
-    start_amount = get_start_amount_with_time(time, nmain);
+    start_amount = get_start_amount(nmain);
     amount = start_amount >> (nmain >> MAIN_BIG_PERIOD_LOG);
     return amount;
 }
@@ -253,17 +239,18 @@ xdag_amount_t xdag_get_supply(uint64_t nmain)
 static void set_main(struct block_internal *m)
 {
     xdag_amount_t amount = 0;
-    g_xdag_stats.nmain++;
+    m->height = ++g_xdag_stats.nmain;
     if (g_xdag_stats.nmain > g_xdag_stats.total_nmain) {
         g_xdag_stats.total_nmain = g_xdag_stats.nmain;
     }
-    amount = get_amount(m->time, g_xdag_stats.nmain + 1);
+    amount = get_amount(m->height);
 	m->flags |= BI_MAIN;
 	accept_amount(m, amount);
 	accept_amount(m, apply_block(m));
     memcpy(m->ref, m->hash, sizeof(xdag_hashlow_t));
     xd_rsdb_put_stats(m->time);
     xd_rsdb_merge_bi(m);
+    xd_rsdb_put_heighthash(m->height, m->hash);
 	log_block((m->flags & BI_OURS ? "MAIN +" : "MAIN  "), m->hash, m->time, m->storage_pos);
 }
 
@@ -272,12 +259,13 @@ static void unset_main(struct block_internal *m)
     xdag_amount_t amount = 0;
 	g_xdag_stats.nmain--;
 	g_xdag_stats.total_nmain--;
-	amount = get_amount(m->time, g_xdag_stats.nmain);
+	amount = get_amount(g_xdag_stats.nmain);
 	m->flags &= ~BI_MAIN;
 	accept_amount(m, (xdag_amount_t)0 - amount);
 	accept_amount(m, unapply_block(m));
     xd_rsdb_put_stats(m->time);
     xd_rsdb_merge_bi(m);
+    xd_rsdb_del_heighthash(m->height);
 	log_block("UNMAIN", m->hash, m->time, m->storage_pos);
 }
 
@@ -1084,7 +1072,7 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 	}
 
 	if (mining) {
-		if(is_randomx_fork(send_time)) {
+		if(is_randomx_fork(MAIN_TIME(send_time))) {
 			uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
 			seed_epoch -= 1; // 15:4095
 			uint64_t seed_lag = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_LAG : SEEDHASH_EPOCH_LAG;
@@ -1834,6 +1822,10 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	uint64_t *h = bi->hash;
 	xdag_xtime_to_string(bi->time, time_buf);
     get_remark(bi, remark);
+    int flags = bi->flags;
+    if(flags & BI_MAIN) {
+        fprintf(out, "    height: %08llu\n", bi->height);
+    }
 	fprintf(out, "      time: %s\n", time_buf);
 	fprintf(out, " timestamp: %llx\n", (unsigned long long)bi->time);
 	fprintf(out, "     flags: %x\n", bi->flags & ~BI_OURS);
@@ -1851,14 +1843,13 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	fprintf(out, "                               block as transaction: details\n");
 	fprintf(out, " direction  address                                    amount\n");
 	fprintf(out, "-----------------------------------------------------------------------------------------------------------------------------\n");
-	int flags;
+
     xdag_hash_t ref = {0};
 	pthread_mutex_lock(&block_mutex);
 	//ref = bi->ref;
     memcpy(ref, bi->ref, sizeof(ref));
-	flags = bi->flags;
 	pthread_mutex_unlock(&block_mutex);
-	if((flags & BI_REF)) {
+	if(flags & BI_REF) {
 		xdag_hash2address(ref, address);
 	} else {
 		strcpy(address, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
@@ -1936,7 +1927,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 
     if (bi->flags & BI_MAIN) {
 		xdag_hash2address(h, address);
-        amount = get_block_earning(bi->time);
+        amount = get_block_earning(bi->height);
 		fprintf(out, "   earning: %s  %10u.%09u  %s %s\n", address,
 			pramount(amount),
 			time_buf, remark);
@@ -1952,19 +1943,19 @@ static void print_block(struct block_internal *block, int print_only_addresses, 
 	xdag_hash2address(block->hash, address);
 
 	if(print_only_addresses) {
-		fprintf(out, "%s\n", address);
+		fprintf(out, "%s   %08lld\n", address, block->height);
 	} else {
 		xdag_xtime_to_string(block->time, time_buf);
         xdag_remark_t remark = {0};
         get_remark(block, remark);
-		fprintf(out, "%s   %s   %-8s  %-32s\n", address, time_buf, xdag_get_block_state_info(block->flags), remark);
+		fprintf(out, "%08llu   %s   %s   %-8s  %-32s\n", block->height, address, time_buf, xdag_get_block_state_info(block->flags), remark);
 	}
 }
 
 static inline void print_header_block_list(FILE *out)
 {
 	fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
-	fprintf(out, "address                            time                      state     mined by                          \n");
+	fprintf(out, "height        address                            time                      state     mined by            \n");
 	fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
 }
 
@@ -2110,26 +2101,24 @@ int xdag_get_transactions(xdag_hash_t hash, void *data, int (*callback)(void*, i
 int remove_orphan(xdag_hashlow_t hash)
 {
     struct block_internal b;
-    if(!xd_rsdb_get_bi(hash, &b)) {
-        if(!(b.flags & BI_REF) ) {
-            b.flags |= BI_REF;
-            struct xdag_block xb;
-            if(!xd_rsdb_get_orpblock(hash, &xb)) {
-                if((&b)->flags & BI_EXTRA) {
-                    b.storage_pos = xdag_storage_save(&xb);
-                    for (int i = 0; i < b.nlinks; ++i) {
-                        remove_orphan(b.link[i]);
-                    }
-                    b.flags &= ~BI_EXTRA;
-                    g_xdag_extstats.nextra--;
-                } else {
-                    g_xdag_extstats.nnoref--;
+    if(!xd_rsdb_get_bi(hash, &b) && !(b.flags & BI_REF) ) {
+        b.flags |= BI_REF;
+        struct xdag_block xb;
+        if(!xd_rsdb_get_orpblock(hash, &xb)) {
+            if((&b)->flags & BI_EXTRA) {
+                b.storage_pos = xdag_storage_save(&xb);
+                for (int i = 0; i < b.nlinks; ++i) {
+                    remove_orphan(b.link[i]);
                 }
-                xd_rsdb_del_orpblock(hash);
-                xd_rsdb_put_cacheblock(hash, &xb);
+                b.flags &= ~BI_EXTRA;
+                g_xdag_extstats.nextra--;
+            } else {
+                g_xdag_extstats.nnoref--;
             }
-            xd_rsdb_merge_bi(&b);
+            xd_rsdb_del_orpblock(hash);
+            xd_rsdb_put_cacheblock(hash, &xb);
         }
+        xd_rsdb_merge_bi(&b);
     }
     return 0;
 }

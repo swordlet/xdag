@@ -53,6 +53,7 @@ int account_callback(void *data, xdag_hash_t hash, xdag_amount_t amount, xtime_t
 void processAccountCommand(char *nextParam, FILE *out);
 void processBalanceCommand(char *nextParam, FILE *out);
 void processBlockCommand(char *nextParam, FILE *out);
+void processBlockCommandByHeight(char *nextParam,FILE *out);
 void processKeyGenCommand(FILE *out);
 void processLevelCommand(char *nextParam, FILE *out);
 void processMinerCommand(char *nextParam, FILE *out);
@@ -78,6 +79,7 @@ void processReloadCommand(char *nextParam, FILE *out);
 int xdag_com_account(char *, FILE*);
 int xdag_com_balance(char *, FILE*);
 int xdag_com_block(char *, FILE*);
+int xdag_com_block_by_height(char *, FILE*);
 int xdag_com_lastblocks(char *, FILE*);
 int xdag_com_mainblocks(char *, FILE*);
 int xdag_com_minedblocks(char *, FILE*);
@@ -109,6 +111,7 @@ XDAG_COMMAND commands[] = {
 	{ "account"     , 0, xdag_com_account },
 	{ "balance"     , 0, xdag_com_balance },
 	{ "block"       , 0, xdag_com_block },
+	{ "blockbyheight", 0, xdag_com_block_by_height },
 	{ "lastblocks"  , 2, xdag_com_lastblocks },
 	{ "mainblocks"  , 2, xdag_com_mainblocks },
 	{ "minedblocks" , 2, xdag_com_minedblocks },
@@ -152,6 +155,12 @@ int xdag_com_balance(char * args, FILE* out)
 int xdag_com_block(char * args, FILE* out)
 {
 	processBlockCommand(args, out);
+	return 0;
+}
+
+int xdag_com_block_by_height(char * args, FILE* out)
+{
+	processBlockCommandByHeight(args, out);
 	return 0;
 }
 
@@ -435,6 +444,23 @@ void processBlockCommand(char *nextParam, FILE *out)
 	}
 }
 
+void processBlockCommandByHeight(char *nextParam, FILE *out)
+{
+	uint64_t blocksHeight = 0;
+	char *cmd = strtok_r(nextParam, " \t\r\n", &nextParam);
+	if((cmd && sscanf(cmd, "%llu", &blocksHeight) != 1) || blocksHeight <= 0) {
+		fprintf(out, "Illegal number.\n");
+	} else {
+		xdag_hashlow_t hash = {0};
+		if(!xd_rsdb_get_heighthash(blocksHeight, hash)) {
+            struct block_internal b;
+            xdag_print_block_info(hash, out);
+		} else {
+            fprintf(out, "con't find block.\n");
+		}
+	}
+}
+
 void processKeyGenCommand(FILE *out)
 {
 	const int res = xdag_wallet_new_key();
@@ -553,7 +579,7 @@ void processStatsCommand(FILE *out)
 	if(is_wallet()) {
 		fprintf(out, "your hashrate MHs: %.2lf\n", xdagGetHashRate());
 	} else {
-		fprintf(out, "Statistics of ours and maximum known parameters:\n"
+		fprintf(out, "Statistics for ours and maximum known parameters:\n"
 			"            hosts: %u of %u\n"
 			"           blocks: %llu of %llu\n"
 			"      main blocks: %llu of %llu\n"
