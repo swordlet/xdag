@@ -175,7 +175,6 @@ static inline void thread_finish_routine(void *);
 void *general_mining_thread(void *arg);
 void *pool_net_thread(void *arg);
 void *pool_main_thread(void *arg);
-//void *pool_rx_main_thread(void *arg);
 void *pool_block_thread(void *arg);
 void *pool_remove_inactive_connections(void *arg);
 void *pool_payment_thread(void *arg);
@@ -186,16 +185,6 @@ void update_mean_log_diff(struct connection_pool_data *, struct xdag_pool_task *
 int xdag_initialize_pool(const char *pool_arg)
 {
 	pthread_t th;
-
-//	if(g_xdag_mine_type == XDAG_RANDOMX){
-//		//TODO:use key base on rx seed height
-//		xdag_mess("pool init seed");
-//		const char* fixed_key="7f9fqlPSnmWje554eVx2yaebwAv0nVnI";
-//		xdag_address2hash(fixed_key, g_fixed_pool_seed);
-//		rx_pool_init_seed(g_fixed_pool_seed, sizeof(g_fixed_pool_seed));
-//		xdag_info("*** xdag init fixed seed %016llx%016llx%016llx%016llx",
-//		          g_fixed_pool_seed[3],g_fixed_pool_seed[2],g_fixed_pool_seed[1],g_fixed_pool_seed[0]);
-//	}
 
 	memset(&g_pool_miner, 0, sizeof(struct miner_pool_data));
 	memset(&g_fund_miner, 0, sizeof(struct miner_pool_data));

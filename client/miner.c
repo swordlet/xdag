@@ -408,7 +408,6 @@ static void *mining_thread(void *arg)
 /* changes the number of mining threads */
 int xdag_mining_start(int n_mining_threads)
 {
-    int err = 0;
 	pthread_t th;
 
 	if(n_mining_threads == g_xdag_mining_threads) {
@@ -427,8 +426,7 @@ int xdag_mining_start(int n_mining_threads)
 
 	while(g_xdag_mining_threads < n_mining_threads) {
 		g_xdag_mining_threads++;
-
-		err = pthread_create(&th, 0, mining_thread, (void*)(uintptr_t)g_xdag_mining_threads);
+		int err = pthread_create(&th, 0, mining_thread, (void*)(uintptr_t)g_xdag_mining_threads);
 		if(err != 0) {
 			printf("create mining_thread failed, error : %s\n", strerror(err));
 			continue;

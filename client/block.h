@@ -213,7 +213,6 @@ void xdag_connect_block(struct xdag_block *b);
 extern int xdag_get_block_info(xdag_hash_t, void *, int (*)(void*, int, xdag_hash_t, xdag_amount_t, xtime_t, uint64_t, const char*),
 							void *, int (*)(void*, const char *, xdag_hash_t, xdag_amount_t));
 
-extern int rx_block_load_seed(xtime_t time);
 
 #ifdef __cplusplus
 };

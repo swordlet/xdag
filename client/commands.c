@@ -111,7 +111,7 @@ XDAG_COMMAND commands[] = {
 	{ "account"     , 0, xdag_com_account },
 	{ "balance"     , 0, xdag_com_balance },
 	{ "block"       , 0, xdag_com_block },
-	{ "blockbyheight", 0, xdag_com_block_by_height },
+	{ "blockbyheight", 2, xdag_com_block_by_height },
 	{ "lastblocks"  , 2, xdag_com_lastblocks },
 	{ "mainblocks"  , 2, xdag_com_mainblocks },
 	{ "minedblocks" , 2, xdag_com_minedblocks },
@@ -456,7 +456,7 @@ void processBlockCommandByHeight(char *nextParam, FILE *out)
             struct block_internal b;
             xdag_print_block_info(hash, out);
 		} else {
-            fprintf(out, "con't find block.\n");
+            fprintf(out, "Block is not found.\n");
 		}
 	}
 }
@@ -962,7 +962,10 @@ int out_balances()
 	xdag_set_log_level(0);
     xdag_crypt_init();
 	memset(&d, 0, sizeof(struct out_balances_data));
-    if(xd_rsdb_pre_init() && xd_rsdb_init(&time)) return -1;
+    if(xd_rsdb_pre_init(1) || xd_rsdb_init(&time)) {
+        printf("rocksdb init fail!\n");
+        return -1;
+    }
 	xdag_traverse_all_blocks(&d, out_balances_callback);
 	return 0;
 }
@@ -993,6 +996,7 @@ void processHelpCommand(FILE *out)
 		"  account [N]          - print first N (20 by default) our addresses with their amounts\n"
 		"  balance [A]          - print balance of the address A or total balance for all our addresses\n"
 		"  block [A]            - print extended info for the block corresponding to the address or hash A\n"
+        "  blockbyheight [N]    - print extended info for the block corresponding to the height N\n"
 		"  lastblocks [N]       - print latest N (20 by default, max limit 100) main blocks\n"
 		"  exit                 - exit this program (not the daemon)\n"
 		"  help                 - print this help\n"
