@@ -88,7 +88,6 @@ include_directories(${RocksDB_INCLUDE_DIR})
 #[6]add source file start
 file(GLOB_RECURSE DAGGER_SOURCES
         client/*.c
-        client/*.cpp
         dfslib/*.c
         dnet/*.c
         ldus/*.c
@@ -166,6 +165,7 @@ target_link_libraries(
         ${RandomX_LIBRARY}
         m
 	    dl
+        -lstdc++
 )
 #[9]end
 

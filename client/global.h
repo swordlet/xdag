@@ -84,7 +84,5 @@ extern enum xdag_field_type g_block_header_type;
 
 extern int is_pool(void);
 extern int is_wallet(void);
-extern int is_randomx_fork(xdag_frame_t);
-
 
 #endif

@@ -36,8 +36,7 @@
 #include "uthash/uthash.h"
 #include "utils/atomic.h"
 #include "time.h"
-#include "rx_mine_hash.h"
-#include "rx_pool_hash.h"
+#include "rx_hash.h"
 
 //TODO: why do we need these two definitions?
 #define START_MINERS_COUNT     256
@@ -289,10 +288,6 @@ void *general_mining_thread(void *arg)
 	while(!g_block_production_on && !g_stop_general_mining) {
 		sleep(1);
 	}
-
-    xdag_mess("Finding initial randomx seed from store...");
-    rx_pool_init_flags(0);
-    rx_block_load_seed(xdag_get_xtimestamp());
 
 	xdag_mess("Starting main blocks creation...");
 
@@ -905,7 +900,7 @@ static int process_received_share(connection_list_element *connection)
 			uint64_t *d=(uint64_t*)conn_data->data;
 //			uint64_t *td=(uint64_t*)rx_task_data;
 
-			rx_pool_calc_hash(rx_task_data, sizeof(rx_task_data), hash);
+			rx_pool_calc_hash(rx_task_data, sizeof(rx_task_data), task->task_time, hash);
 			//xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
 			xdag_info("#*# rx pre %016llx%016llx%016llx%016llx from task",task->task[0].data[3],task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
 			xdag_info("#*# rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);

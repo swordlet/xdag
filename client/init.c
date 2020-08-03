@@ -35,6 +35,7 @@
 #include "utils/random.h"
 #include "websocket/websocket.h"
 #include "rsdb.h"
+#include "rx_hash.h"
 
 #define ARG_EQUAL(a,b,c) strcmp(c, "") == 0 ? strcmp(a, b) == 0 : (strcmp(a, b) == 0 || strcmp(a, c) == 0)
 
@@ -124,10 +125,16 @@ int xdag_init(int argc, char **argv, int isGui)
 	}
 
 	if(is_wallet()) {
+        if(g_xdag_mine_type == XDAG_RANDOMX){
+            rx_init_flags(1, parameters.mining_threads_count);
+        }
 		if(setup_miner(&parameters, isGui) < 0) {
 			return -1;
 		}
 	} else {
+        if(g_xdag_mine_type == XDAG_RANDOMX){
+            rx_init_flags(0, 0); // TODO: use full memory mode in pool
+        }
 		if(setup_pool(&parameters) < 0) {
 			return -1;
 		}

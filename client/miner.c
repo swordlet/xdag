@@ -27,7 +27,7 @@
 #include "utils/utils.h"
 #include "utils/random.h"
 #include <randomx.h>
-#include "rx_mine_hash.h"
+#include "rx_hash.h"
 
 #define MINERS_PWD             "minersgonnamine"
 #define SECTOR0_BASE           0x1947f3acu
@@ -50,10 +50,6 @@ static pthread_mutex_t g_miner_mutex = PTHREAD_MUTEX_INITIALIZER;
 int g_xdag_mining_threads = 0;
 
 static int g_socket = -1, g_stop_mining = 1;
-
-//randomx_cache *rx_cache = NULL;
-//randomx_dataset *rx_mine_dataset = NULL;
-
 
 static int can_send_share(time_t current_time, time_t task_time, time_t share_time)
 {
@@ -427,10 +423,6 @@ int xdag_mining_start(int n_mining_threads)
 		sleep(5);
 		g_stop_mining = 0;
 		g_xdag_mining_threads = 0;
-	}
-
-	if(g_xdag_mine_type == XDAG_RANDOMX){
-        rx_mine_init_flags(n_mining_threads);
 	}
 
 	while(g_xdag_mining_threads < n_mining_threads) {
