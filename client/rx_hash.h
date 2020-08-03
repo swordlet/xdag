@@ -52,13 +52,6 @@ extern void rx_mine_init_dataset(void *seed_data, size_t seed_size);
 //randomx mining worker
 extern uint64_t xdag_rx_mine_worker_hash(xdag_hash_t pre_hash, xdag_hash_t last_field ,uint64_t *nonce,
                                          uint64_t attempts, int step, xdag_hash_t hash);
-
-////get randomx seed height
-//extern uint64_t rx_seed_height(const uint64_t height);
-//
-////get randomx seed heights
-//extern void rx_seed_heights(const uint64_t height, uint64_t *seed_height, uint64_t *next_height);
-
 //randomx hash for pool verify mining share
 extern int rx_pool_calc_hash(void* data,size_t data_size,xdag_frame_t task_time,void* output_hash);
 
