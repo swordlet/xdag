@@ -63,13 +63,12 @@ static int can_send_share(time_t current_time, time_t task_time, time_t share_ti
 /* initialization of connection the miner to pool */
 extern int xdag_initialize_miner(const char *pool_address)
 {
-	int err=0;
 	pthread_t th;
 
 	memset(&g_local_miner, 0, sizeof(struct miner));
 	xdag_get_our_block(g_local_miner.id.data);
 
-	err = pthread_create(&th, 0, miner_net_thread, (void*)pool_address);
+	int err = pthread_create(&th, 0, miner_net_thread, (void*)pool_address);
 	if(err != 0) {
 		printf("create miner_net_thread failed, error : %s\n", strerror(err));
 		return -1;

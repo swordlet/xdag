@@ -139,7 +139,7 @@ int xdag_init(int argc, char **argv, int isGui)
 			return -1;
 		}
 	}
-//    pthread_t th;
+    pthread_t th;
     if(!isGui) {
         if(is_pool() || (parameters.transport_flags & XDAG_DAEMON) > 0) {
             xdag_mess("Starting terminal server...");
