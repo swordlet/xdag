@@ -19,7 +19,7 @@ uint64_t g_rx_fork_lag;
 uint64_t g_rx_pool_mem_index = 0;
 rx_pool_mem g_rx_pool_mem[2];   // two randomx seeds cover 8192 main blocks(about 6 days)
 
-// global randomx dataset used by both two seed
+// global pool randomx dataset used by both two seed
 // when a seed using this datset (full mode), its previous seed using light mode (only using cache)
 randomx_dataset *g_rx_pool_dataset = NULL;
 

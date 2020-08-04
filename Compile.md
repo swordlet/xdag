@@ -16,6 +16,7 @@ Prerequisites:
 - libgtest
 - jemalloc
 - rocksdb
+- randomX
 
 Steps to update your gcc and glibc
 ```
@@ -56,6 +57,13 @@ cd v6.4.6
 mkdir build & cd build
 cmake .. -DWITH_JEMALLOC=ON -DWITH_SNAPPY=ON -DWITH_LZ4=ON -DWITH_ZLIB=ON -DWITH_ZSTD=ON
 make -j 4
+sudo make install
+
+git clone https://github.com/tevador/RandomX.git
+cd RandomX
+mkdir build && cd build
+cmake -DARCH=native ..
+make
 sudo make install
 
 ```
