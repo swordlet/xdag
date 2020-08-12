@@ -26,7 +26,6 @@
 #include "utils/log.h"
 #include "utils/utils.h"
 #include "utils/random.h"
-#include <randomx.h>
 #include "rx_hash.h"
 
 #define MINERS_PWD             "minersgonnamine"
@@ -318,7 +317,7 @@ begin:
                 share_time = time(0);
                 res = send_to_pool(&task->lastfield, 1);
                 pthread_mutex_unlock(&g_miner_mutex);
-                uint64_t *d = (uint64_t *) &task->lastfield;
+//                uint64_t *d = (uint64_t *) &task->lastfield;
 //                xdag_info("Sent lastfield data %016llx%016llx%016llx%016llx", d[0], d[1], d[2], d[3]);
                 xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
                           h[3], h[2], h[1], h[0], task->task_time << 16 | 0xffff, res);
@@ -379,7 +378,7 @@ static void *mining_thread(void *arg)
 			oldntask = ntask;
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
 			nonce = last.amount + nthread;
-			xdag_info("mining thread %lu start nonce %016llx",pthread_self(),nonce);
+//			xdag_info("mining thread %lu start nonce %016llx",pthread_self(),nonce);
 		}
         if(g_xdag_mine_type == XDAG_RANDOMX) {
             last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 1024,
@@ -389,7 +388,7 @@ static void *mining_thread(void *arg)
             last.amount = xdag_hash_final_multi(task->ctx, &nonce, 4096, g_xdag_mining_threads, hash);
             g_xdag_extstats.nhashes += 4096;
         }
-        xd_rsdb_put_extstats();
+
 		xdag_set_min_share(task, last.data, hash);
 	}
 

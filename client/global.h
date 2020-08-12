@@ -34,10 +34,6 @@ extern struct xdag_ext_stats {
 	uint64_t nhashes;
 	double hashrate_s;
 	uint32_t nwaitsync;
-	uint32_t cache_size;
-	uint32_t cache_usage;
-	double cache_hitrate;
-	int use_orphan_hashtable;
 } g_xdag_extstats;
 
 enum xdag_type {
@@ -68,7 +64,7 @@ extern char *g_coinname, *g_progname;
 //defines if mining is disabled (pool)
 extern int g_disable_mining;
 
-//defines mine type for test
+//defines mine type for randomx
 extern enum xdag_mine_type g_xdag_mine_type;
 
 extern xd_rsdb_t *g_xdag_rsdb;

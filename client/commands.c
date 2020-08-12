@@ -110,7 +110,7 @@ XDAG_COMMAND* find_xdag_command(char*);
 XDAG_COMMAND commands[] = {
 	{ "account"     , 0, xdag_com_account },
 	{ "balance"     , 0, xdag_com_balance },
-	{ "block"       , 0, xdag_com_block },
+	{ "block"       , 2, xdag_com_block },
 	{ "blockbyheight", 2, xdag_com_block_by_height },
 	{ "lastblocks"  , 2, xdag_com_lastblocks },
 	{ "mainblocks"  , 2, xdag_com_mainblocks },
@@ -843,6 +843,9 @@ int xdag_do_xfer(void *outv, const char *amount, const char *address, const char
 		return 1;
 	}
 
+    xdag_wallet_default_key(&xfer.keys[XFER_MAX_IN]);
+    xfer.outsig = 1;
+
 #if REMARK_ENABLED
 	if(remark) {
 		if(!validate_remark(remark)) {
@@ -851,14 +854,12 @@ int xdag_do_xfer(void *outv, const char *amount, const char *address, const char
 			}
 			return 1;
 		} else {
-			memcpy(xfer.remark, remark, strlen(remark));
+			memcpy(xfer.remark, remark, sizeof(xdag_remark_t));
 			xfer.hasRemark = 1;
 		}
 	}
 #endif
 
-	xdag_wallet_default_key(&xfer.keys[XFER_MAX_IN]);
-	xfer.outsig = 1;
 	g_xdag_state = XDAG_STATE_XFER;
 	g_xdag_xfer_last = time(0);
 	xdag_traverse_our_blocks(&xfer, &xfer_callback);
@@ -877,7 +878,7 @@ int xfer_callback(void *data, xdag_hash_t hash, xdag_amount_t amount, xtime_t ti
 	xdag_amount_t todo = xferData->remains;
 	int i;
 	if(!amount) {
-		return -1;
+		return 0;
 	}
 	if(is_pool() && xdag_get_frame() < (time >> 16) + 2 * CONFIRMATIONS_COUNT) {
 		return 0;
