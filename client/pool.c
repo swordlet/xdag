@@ -886,16 +886,7 @@ static int process_received_share(connection_list_element *connection)
 			uint8_t rx_task_data[sizeof(xdag_hash_t)*2];
 			memcpy(rx_task_data,task->task[0].data,sizeof(xdag_hash_t));
 			memcpy(rx_task_data+sizeof(xdag_hash_t),conn_data->data,sizeof(xdag_hash_t));
-			uint64_t *d=(uint64_t*)conn_data->data;
-//			uint64_t *td=(uint64_t*)rx_task_data;
-
 			rx_pool_calc_hash(rx_task_data, sizeof(rx_task_data), task->task_time, hash);
-			//xdag_info("rx seed %016llx%016llx%016llx%016llx ", g_fixed_pool_seed[0], g_fixed_pool_seed[1], g_fixed_pool_seed[2], g_fixed_pool_seed[3]);
-			xdag_info("#*# rx pre %016llx%016llx%016llx%016llx from task",task->task[0].data[3],task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
-			xdag_info("#*# rx lastfield %016llx%016llx%016llx%016llx from miner",d[0],d[1],d[2],d[3]);
-//			xdag_info("rx task data %016llx%016llx%016llx%016llx%016llx%016llx%016llx%016llx",
-//					td[0],td[1],td[2],td[3],td[4],td[5],td[6],td[7]);
-			xdag_info("#*# rx share %016llx%016llx%016llx%016llx from verify",hash[3],hash[2],hash[1],hash[0]);
 		}else{
 			xdag_hash_final(task->ctx0, conn_data->data, sizeof(struct xdag_field), hash);
 		}

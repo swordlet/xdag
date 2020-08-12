@@ -17,6 +17,7 @@ uint64_t g_rx_fork_seed_height;
 uint64_t g_rx_fork_lag;
 
 uint64_t g_rx_pool_mem_index = 0;
+uint64_t g_rx_hash_epoch_index = 0;
 rx_pool_mem g_rx_pool_mem[2];   // two randomx seeds cover 8192 main blocks(about 6 days)
 
 // global pool randomx dataset used by both two seed
@@ -45,8 +46,8 @@ static uint32_t g_mine_n_threads;
 
 static pthread_mutex_t g_rx_dataset_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int rx_release_prev_dataset(void);
-int rx_update_vm(randomx_vm *vm, randomx_cache *cache, randomx_dataset *dataset);
+int rx_release_prev_dataset(uint64_t mem_index);
+int rx_update_vm(randomx_vm **vm, randomx_cache *cache, randomx_dataset *dataset);
 
 static void rx_abort(const char *msg){
     fprintf(stderr, "%s\n", msg);
@@ -59,24 +60,48 @@ static void rx_abort(const char *msg){
 inline int is_randomx_fork(xdag_frame_t t) {
     return (g_xdag_mine_type == XDAG_RANDOMX && t > g_rx_fork_time);
 }
+
 inline void  rx_set_fork_time(struct block_internal *m) {
     uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
     seed_epoch -= 1; // 15:4095
-    if (m->height>= g_rx_fork_seed_height && (m->height & seed_epoch) == 0) {
-       uint64_t mem_index = g_rx_pool_mem_index + 1;
-       rx_pool_mem *next_rx_mem = &g_rx_pool_mem[mem_index & 1];
-       memcpy(next_rx_mem->seed, m->hash, sizeof(xdag_hashlow_t));
+    if (m->height>= g_rx_fork_seed_height) {
+       uint64_t next_mem_index = g_rx_hash_epoch_index + 1;
+       rx_pool_mem *next_rx_mem = &g_rx_pool_mem[next_mem_index & 1];
         if (m->height == g_rx_fork_seed_height) {
             g_rx_fork_time = MAIN_TIME(m->time) + g_rx_fork_lag;
+            xdag_info("*#*from %8llu,%16llx, set fork time to %16llx", m->height, m->time, g_rx_fork_time);
         }
-        next_rx_mem->switch_time = MAIN_TIME(m->time) + g_rx_fork_lag + 1;
-        next_rx_mem->is_switched = 0;
+        if ((m->height & seed_epoch) == 0 && xdag_cmphash(next_rx_mem->seed, m->hash) != 0) {
+            memcpy(next_rx_mem->seed, m->hash, sizeof(xdag_hashlow_t));
+            next_rx_mem->switch_time = MAIN_TIME(m->time) + g_rx_fork_lag + 1;
+            next_rx_mem->seed_time = m->time;
+            next_rx_mem->seed_height = m->height;
+            xdag_info("*#*from %8llu,%16llx, set switch time to %16llx", m->height, m->time,
+                      next_rx_mem->switch_time);
+            rx_pool_update_seed(next_mem_index);
+            g_rx_hash_epoch_index = next_mem_index;
+            next_rx_mem->is_switched = 0;
+        }
    }
 }
 
 inline void  rx_unset_fork_time(struct block_internal *m) {
-    if (m->height == g_rx_fork_seed_height) {
-        g_rx_fork_time = -1;
+    uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
+    seed_epoch -= 1; // 15:4095
+    if (m->height>= g_rx_fork_seed_height) {
+        if (m->height == g_rx_fork_seed_height) {
+            xdag_info("*#*%8llu,%16llx, unset fork time  %16llx", m->height, m->time, g_rx_fork_time);
+            g_rx_fork_time = -1;
+        }
+        if ((m->height & seed_epoch) == 0) {
+            rx_pool_mem *rx_mem = &g_rx_pool_mem[g_rx_hash_epoch_index & 1];
+            xdag_info("*#*%8llu,%16llx, unset switch time   %16llx", m->height, m->time, rx_mem->switch_time);
+            g_rx_hash_epoch_index -= 1;
+            rx_mem->seed_time = -1;
+            rx_mem->seed_height = -1;
+            rx_mem->switch_time = -1;
+            rx_mem->is_switched = -1;
+        }
     }
 }
 
@@ -88,7 +113,18 @@ void rx_init_flags(int is_full_mem, uint32_t init_thread_count) {
         g_rx_fork_seed_height = RANDOMX_FORK_HEIGHT;
         g_rx_fork_lag = SEEDHASH_EPOCH_LAG;
     }
+    uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
+    if ((g_rx_fork_seed_height & (seed_epoch -1)) != 0) {
+        rx_abort("rx mine invalid seed hight.");
+        return;
+    }
+
     memset(g_rx_pool_mem, 0, sizeof(rx_pool_mem)*2);
+    g_rx_pool_mem[0].switch_time = -1;
+    g_rx_pool_mem[0].is_switched = -1;
+    g_rx_pool_mem[1].switch_time = -1;
+    g_rx_pool_mem[1].is_switched = -1;
+
 
     g_randomx_flags = randomx_get_flags();
 
@@ -204,7 +240,7 @@ void rx_mine_init_dataset(void *seed_data, size_t seed_size) {
 
         //assign item_count items per thread to init，the last thread init item_count_remain items
         for (i=0; i < g_mine_n_threads; i++) {
-            auto count = item_count_per + (i == g_mine_n_threads - 1 ? item_count_remain : 0);
+            uint32_t count = item_count_per + (i == g_mine_n_threads - 1 ? item_count_remain : 0);
             si[i].si_cache = g_rx_mine_cache;
             si[i].si_start = start;   //start index
             si[i].si_count = count;   //items count
@@ -307,7 +343,7 @@ static void rx_pool_init_dataset(randomx_cache *rx_cache, randomx_dataset *rx_da
 
         //assign item_count items per thread to init，the last thread init item_count_remain items
         for (i=0; i < thread_count; i++) {
-            auto count = item_count_per + (i == thread_count - 1 ? item_count_remain : 0);
+            uint32_t count = item_count_per + (i == thread_count - 1 ? item_count_remain : 0);
             si[i].si_cache = rx_cache;
             si[i].si_start = start;   //start index
             si[i].si_count = count;   //items count
@@ -337,85 +373,113 @@ static void rx_pool_init_dataset(randomx_cache *rx_cache, randomx_dataset *rx_da
 // pool verify share hash from miner
 int rx_pool_calc_hash(void* data,size_t data_size,xdag_frame_t task_time,void* output_hash) {
     rx_pool_mem *rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
-    pthread_rwlock_t rwlock;
+    pthread_rwlock_t *rwlock;
     if (task_time < rx_memory->switch_time) {
         // data time is before switch time, using previous seed
-        rwlock = g_rx_memory_rwlock[(g_rx_pool_mem_index-1) & 1];
+        rwlock = &g_rx_memory_rwlock[(g_rx_pool_mem_index-1) & 1];
         rx_memory = &g_rx_pool_mem[(g_rx_pool_mem_index-1) & 1];
     } else {
-        rwlock = g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
+        rwlock = &g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
     }
-    pthread_rwlock_rdlock(&rwlock);
+
+    pthread_rwlock_rdlock(rwlock);
     randomx_calculate_hash(rx_memory->pool_vm,data,data_size,output_hash);
-    pthread_rwlock_unlock(&rwlock);
+    pthread_rwlock_unlock(rwlock);
 
     return 0;
 }
 
 // randomx hash for calculate block difficulty used by add_block_nolock
-int rx_block_hash(void* data,size_t data_size,xdag_frame_t task_time,void* output_hash) {
+int rx_block_hash(void* data,size_t data_size,xdag_frame_t block_time,void* output_hash) {
+    pthread_rwlock_t *rwlock;
+    rx_pool_mem *rx_memory;
 
-    rx_pool_mem *rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
-    pthread_rwlock_t rwlock;
-    if (task_time < rx_memory->switch_time) {
-        // data time is before switch time, using previous seed
-        rwlock = g_rx_memory_rwlock[(g_rx_pool_mem_index-1) & 1];
-        rx_memory = &g_rx_pool_mem[(g_rx_pool_mem_index-1) & 1];
-    } else {
-        rwlock = g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
+    if (g_rx_pool_mem_index == 0 && g_rx_hash_epoch_index == 0) { // no seed
+        xdag_info("#!!! both index are 0");
+        return -1;
+    } else if (g_rx_hash_epoch_index == 1) { // first seed
+        rx_memory = &g_rx_pool_mem[g_rx_hash_epoch_index & 1];
+        if (block_time < rx_memory->switch_time) {
+            xdag_info("#!!! block time %16llx less than switch time %16llx", block_time, rx_memory->switch_time);
+            return -1;
+        } else {
+            rwlock = &g_rx_memory_rwlock[g_rx_hash_epoch_index & 1];
+        }
+
+    }else if (g_rx_pool_mem_index > 1 && g_rx_pool_mem_index == g_rx_hash_epoch_index) { // after seed switch
+        rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
+        if (block_time < rx_memory->switch_time) {
+            // data time is before switch time, using previous seed
+            rwlock = &g_rx_memory_rwlock[(g_rx_pool_mem_index-1) & 1];
+            rx_memory = &g_rx_pool_mem[(g_rx_pool_mem_index-1) & 1];
+        } else {
+            rwlock = &g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
+        }
+    }else if (g_rx_pool_mem_index > 0 && g_rx_pool_mem_index < g_rx_hash_epoch_index) { // before seed switch
+        rx_memory = &g_rx_pool_mem[g_rx_hash_epoch_index & 1];
+        if (block_time < rx_memory->switch_time) {
+            rwlock = &g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
+            rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
+        } else {
+            rwlock = &g_rx_memory_rwlock[g_rx_hash_epoch_index & 1];
+        }
     }
-    pthread_rwlock_rdlock(&rwlock);
+
+    pthread_rwlock_rdlock(rwlock);
     randomx_calculate_hash(rx_memory->block_vm, data, data_size, output_hash);
-    pthread_rwlock_unlock(&rwlock);
+    pthread_rwlock_unlock(rwlock);
 
     return 0;
 }
 
 // update randomx vm with new seed
-int rx_update_vm(randomx_vm *vm, randomx_cache *cache, randomx_dataset *dataset) {
-    if(vm == NULL){
+int rx_update_vm(randomx_vm **vm, randomx_cache *cache, randomx_dataset *dataset) {
+    if(*vm == NULL){
         if (g_randomx_flags & RANDOMX_FLAG_FULL_MEM) {
-            vm = randomx_create_vm(g_randomx_flags, NULL, dataset);
+            *vm = randomx_create_vm(g_randomx_flags, NULL, dataset);
         } else {
-            vm = randomx_create_vm(g_randomx_flags, cache, NULL);
+            *vm = randomx_create_vm(g_randomx_flags, cache, NULL);
         }
-        if (vm== NULL) {
-//            pthread_rwlock_unlock(&rwlock);
+        if (*vm== NULL) {
+//            pthread_rwlock_unlock(rwlock);
             return -1;
         }
+        xdag_info(" vm created");
     } else {
         if (g_randomx_flags & RANDOMX_FLAG_FULL_MEM) {
-            randomx_vm_set_dataset(vm, dataset);
+            randomx_vm_set_dataset(*vm, dataset);
         } else {
-            randomx_vm_set_cache(vm, cache);
+            randomx_vm_set_cache(*vm, cache);
         }
+        xdag_info(" vm updated");
     }
     return 0;
 }
 
 // previous seed turn to use light mode
-int rx_release_prev_dataset() {
-    pthread_rwlock_t rwlock = g_rx_memory_rwlock[(g_rx_pool_mem_index-1) & 1];
-    rx_pool_mem *prev_memory = &g_rx_pool_mem[(g_rx_pool_mem_index-1) & 1];
-    pthread_rwlock_wrlock(&rwlock);
+int rx_release_prev_dataset(uint64_t mem_index) {
+    pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[(mem_index-1) & 1];
+    rx_pool_mem *prev_memory = &g_rx_pool_mem[(mem_index-1) & 1];
+    pthread_rwlock_wrlock(rwlock);
     if (prev_memory->rx_dataset != NULL) {
         randomx_vm_set_cache(prev_memory->pool_vm, prev_memory->rx_cache);
         randomx_vm_set_cache(prev_memory->block_vm, prev_memory->rx_cache);
     }
-    pthread_rwlock_unlock(&rwlock);
+    pthread_rwlock_unlock(rwlock);
     return 0;
 }
 
-int rx_pool_update_seed() {
+int rx_pool_update_seed(uint64_t mem_index) {
 
-    pthread_rwlock_t rwlock = g_rx_memory_rwlock[g_rx_pool_mem_index & 1];
-    pthread_rwlock_wrlock(&rwlock);
-    rx_pool_mem *rx_memory = &g_rx_pool_mem[g_rx_pool_mem_index & 1];
+    pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[mem_index & 1];
+    pthread_rwlock_wrlock(rwlock);
+    rx_pool_mem *rx_memory = &g_rx_pool_mem[mem_index & 1];
 
     if (rx_memory->rx_cache == NULL){
+        xdag_info("alloc pool rx cache ...");
         rx_memory->rx_cache = randomx_alloc_cache(g_randomx_flags);
         if (rx_memory->rx_cache == NULL) {
-            pthread_rwlock_unlock(&rwlock);
+            pthread_rwlock_unlock(rwlock);
             rx_abort("alloc rx cache failed");
             return -1;
         }
@@ -427,13 +491,13 @@ int rx_pool_update_seed() {
     }
     if (g_randomx_flags & RANDOMX_FLAG_FULL_MEM) {
         xdag_info("release previous rx dataset ...");
-        rx_release_prev_dataset();
+        rx_release_prev_dataset(mem_index);
 
         if (g_rx_pool_dataset == NULL) {
             xdag_info("alloc pool rx dataset ...");
             g_rx_pool_dataset = randomx_alloc_dataset(g_randomx_flags);
             if (rx_memory->rx_dataset == NULL) {
-                pthread_rwlock_unlock(&rwlock);
+                pthread_rwlock_unlock(rwlock);
                 rx_abort("alloc dataset failed");
                 return -1;
             }
@@ -445,20 +509,20 @@ int rx_pool_update_seed() {
         }
     }
 
-    if (rx_update_vm(rx_memory->pool_vm, rx_memory->rx_cache, rx_memory->rx_dataset) < 0) {
-        pthread_rwlock_unlock(&rwlock);
+    if (rx_update_vm(&rx_memory->pool_vm, rx_memory->rx_cache, rx_memory->rx_dataset) < 0) {
+        pthread_rwlock_unlock(rwlock);
         rx_abort("update pool vm failed");
         return -1;
     }
     xdag_info("update pool vm finished");
 
-    if (rx_update_vm(rx_memory->block_vm, rx_memory->rx_cache, rx_memory->rx_dataset) < 0) {
+    if (rx_update_vm(&rx_memory->block_vm, rx_memory->rx_cache, rx_memory->rx_dataset) < 0) {
         rx_abort("update block vm failed");
-        pthread_rwlock_unlock(&rwlock);
+        pthread_rwlock_unlock(rwlock);
         return -1;
     }
     xdag_info("update block vm finished");
 
-    pthread_rwlock_unlock(&rwlock);
+    pthread_rwlock_unlock(rwlock);
     return 0;
 }

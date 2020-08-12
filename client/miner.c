@@ -279,15 +279,9 @@ begin:
                     memcpy(task->nonce.data, hash, sizeof(xdag_hashlow_t));
                     memcpy(task->lastfield.data, task->nonce.data, sizeof(xdag_hash_t));
 
-                    if(is_randomx_fork(task->task_time)) {
-                        xdag_info("### new task ###");
+                    if(g_xdag_mine_type == XDAG_RANDOMX) {
                         memcpy(task->task[0].data,data[0].data, sizeof(xdag_hash_t));
                         memcpy(task->task[1].data,data[1].data,sizeof(xdag_hash_t));
-
-                        xdag_info("### receive pre hash %016llx%016llx%016llx%016llx",data[0].data[3],data[0].data[2],data[0].data[1],data[0].data[0]);
-                        xdag_info("### receive rx seed %016llx%016llx%016llx%016llx",data[1].data[3],data[1].data[2],data[1].data[1],data[1].data[0]);
-                        xdag_info("copy our block hash %016llx%016llx%016llx%016llx to lastfield data",hash[3],hash[2],hash[1],hash[0]);
-
                         memset(task->minhash.data, 0xff, sizeof(xdag_hash_t));
 
                         struct xdag_pool_task *pre_task = &g_xdag_pool_task[g_xdag_pool_task_index & 1];
@@ -325,7 +319,7 @@ begin:
                 res = send_to_pool(&task->lastfield, 1);
                 pthread_mutex_unlock(&g_miner_mutex);
                 uint64_t *d = (uint64_t *) &task->lastfield;
-                xdag_info("Sent lastfield data %016llx%016llx%016llx%016llx", d[0], d[1], d[2], d[3]);
+//                xdag_info("Sent lastfield data %016llx%016llx%016llx%016llx", d[0], d[1], d[2], d[3]);
                 xdag_info("Share : %016llx%016llx%016llx%016llx t=%llx res=%d",
                           h[3], h[2], h[1], h[0], task->task_time << 16 | 0xffff, res);
 
@@ -386,10 +380,8 @@ static void *mining_thread(void *arg)
 			memcpy(last.data, task->nonce.data, sizeof(xdag_hash_t));
 			nonce = last.amount + nthread;
 			xdag_info("mining thread %lu start nonce %016llx",pthread_self(),nonce);
-            xdag_info("### new pre hash to slow hash %016llx%016llx%016llx%016llx",task->task[0].data[3],
-                      task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
 		}
-        if(is_randomx_fork(xdag_get_frame())){
+        if(g_xdag_mine_type == XDAG_RANDOMX) {
             last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 1024,
                                 g_xdag_mining_threads, hash);
             g_xdag_extstats.nhashes += 1024;

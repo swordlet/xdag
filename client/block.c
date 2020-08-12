@@ -42,7 +42,7 @@ int32_t check_signature_out(struct block_internal*, struct xdag_public_key*, con
 static int32_t find_and_verify_signature_out(struct xdag_block*, struct xdag_public_key*, const int);
 int do_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
 int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime_t send_time);
-xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t);
+xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_hash_t hash);
 int remove_orphan(xdag_hashlow_t);
 void add_orphan(struct block_internal*, struct xdag_block*);
 static inline size_t remark_acceptance(xdag_remark_t);
@@ -633,7 +633,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 
 	keysCount = j;
 	if (is_randomx_fork(MAIN_TIME(tmpNodeBlock.time)) && (tmpNodeBlock.time & 0xffff) == 0xffff) {
-        tmpNodeBlock.difficulty = diff0 = rx_hash_difficulty(newBlock, MAIN_TIME(tmpNodeBlock.time));
+        tmpNodeBlock.difficulty = diff0 = rx_hash_difficulty(newBlock, MAIN_TIME(tmpNodeBlock.time),tmpNodeBlock.hash);
 	} else {
         tmpNodeBlock.difficulty = diff0 = xdag_hash_difficulty(tmpNodeBlock.hash);
 	}
@@ -1082,11 +1082,9 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 		if(is_randomx_fork(MAIN_TIME(send_time))) {
 			uint64_t rx_mem_index = g_rx_pool_mem_index + 1;
 			rx_pool_mem *next_rx_mem = &g_rx_pool_mem[rx_mem_index & 1];
-		    if(MAIN_TIME(send_time) == next_rx_mem->switch_time ||
-		        (MAIN_TIME(send_time) > next_rx_mem->switch_time && !next_rx_mem->is_switched) ) {
+		    if(MAIN_TIME(send_time) >= next_rx_mem->switch_time && next_rx_mem->is_switched  == 0) {
                 g_rx_pool_mem_index += 1;
                 next_rx_mem->is_switched = 1;
-                rx_pool_update_seed();
 		    }
 		    if(!do_rx_mining(block, &pretop, send_time)) {
 				goto begin;
@@ -1203,6 +1201,9 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
     g_xdag_pool_task_index = taskIndex;
 	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx",task->task[0].data[3],
             task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
+    memcpy(task->nonce.data, block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(struct xdag_field));
+    memcpy(task->lastfield.data, block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(struct xdag_field));
+    memset(task->minhash.data, 0xff, sizeof(xdag_hash_t));
 
 	while(xdag_get_xtimestamp() <= send_time) {
 		sleep(1);
@@ -2291,11 +2292,14 @@ static inline void add_ourblock(struct block_internal *nodeBlock)
     xd_rsdb_put_setting(SETTING_OUR_LAST_HASH, (const char *) g_ourlast_hash, sizeof(g_ourlast_hash));
 }
 
-xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t) {
+xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_hash_t tmp_hash) {
     xdag_hash_t rx_hash_data[2];
     xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_hash_data[0]);
     memcpy(rx_hash_data[1], block->field[XDAG_BLOCK_FIELDS-1].data, sizeof(struct xdag_field));
     xdag_hash_t hash;
-    rx_block_hash(rx_hash_data, sizeof(rx_hash_data),t,hash);
-    return xdag_hash_difficulty(hash);
+    if (rx_block_hash(rx_hash_data, sizeof(rx_hash_data), t, hash) == 0) {
+        return xdag_hash_difficulty(hash);
+    } else {
+        return xdag_hash_difficulty(tmp_hash);
+    }
 }
