@@ -605,7 +605,6 @@ static int add_block_nolock(struct xdag_block *newBlock, xtime_t limit)
 	} else {
         tmpNodeBlock.difficulty = diff0 = xdag_hash_difficulty(tmpNodeBlock.hash);
 	}
-	tmpNodeBlock.difficulty = diff0 = xdag_hash_difficulty(tmpNodeBlock.hash);
 	sum_out += newBlock->field[0].amount;
 	tmpNodeBlock.fee = newBlock->field[0].amount;
 	if (tmpNodeBlock.fee) {
