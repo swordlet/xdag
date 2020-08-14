@@ -69,8 +69,8 @@ extern enum xdag_mine_type g_xdag_mine_type;
 
 extern xd_rsdb_t *g_xdag_rsdb;
 
-extern xdag_hash_t g_top_main_chain_hash;
-extern xdag_hash_t g_pre_top_main_chain_hash;
+extern struct block_internal top_main_chain;
+extern struct block_internal pretop_main_chain;
 extern xdag_hashlow_t g_ourfirst_hash;
 extern xdag_hashlow_t g_ourlast_hash;
 extern xdag_amount_t g_balance;
