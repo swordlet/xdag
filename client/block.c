@@ -994,7 +994,7 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 
 	if (mining) {
 		if(is_randomx_fork(MAIN_TIME(send_time))) {
-			uint64_t rx_mem_index = g_rx_pool_mem_index + 1;
+			uint64_t rx_mem_index = g_rx_pool_mem_index + 1; // TODO: g_rx_hash_epoch_index is even
 			rx_pool_mem *next_rx_mem = &g_rx_pool_mem[rx_mem_index & 1];
 		    if(MAIN_TIME(send_time) >= next_rx_mem->switch_time && next_rx_mem->is_switched  == 0) {
                 g_rx_pool_mem_index += 1;

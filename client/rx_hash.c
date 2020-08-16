@@ -115,7 +115,7 @@ void rx_init_flags(int is_full_mem, uint32_t init_thread_count) {
     }
     uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
     if ((g_rx_fork_seed_height & (seed_epoch -1)) != 0) {
-        rx_abort("rx mine invalid seed hight.");
+        rx_abort("randomx: invalid seed height.");
         return;
     }
 
