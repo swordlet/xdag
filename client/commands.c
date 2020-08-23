@@ -24,6 +24,7 @@
 #include <unistd.h>
 #endif
 #include "version.h"
+#include "rx_hash.h"
 
 #define Nfields(d) (2 + d->hasRemark + d->fieldsCount + 3 * d->keysCount + 2 * d->outsig)
 #define COMMAND_HISTORY ".cmd.history"
@@ -628,7 +629,13 @@ void processStatsCommand(FILE *out)
 
 void processExitCommand()
 {
+    if(is_wallet()) {
+        rx_miner_release_mem();
+    }
 
+    if(is_pool()) {
+        rx_pool_release_mem();
+    }
 }
 
 void processXferCommand(char *nextParam, FILE *out, int ispwd, uint32_t* pwd)

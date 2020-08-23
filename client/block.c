@@ -994,7 +994,10 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 
 	if (mining) {
 		if(is_randomx_fork(MAIN_TIME(send_time))) {
-			uint64_t rx_mem_index = g_rx_pool_mem_index + 1; // TODO: g_rx_hash_epoch_index is even
+		    if (g_rx_pool_mem_index == 0) {
+		        g_rx_pool_mem_index = (g_rx_hash_epoch_index - 1) & 1;
+		    }
+			uint64_t rx_mem_index = g_rx_pool_mem_index + 1;
 			rx_pool_mem *next_rx_mem = &g_rx_pool_mem[rx_mem_index & 1];
 		    if(MAIN_TIME(send_time) >= next_rx_mem->switch_time && next_rx_mem->is_switched  == 0) {
                 g_rx_pool_mem_index += 1;
@@ -1113,8 +1116,8 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),task->task[0].data);
 	memcpy(task->task[1].data, rx_memory->seed, sizeof(rx_memory->seed));
     g_xdag_pool_task_index = taskIndex;
-	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx",task->task[0].data[3],
-            task->task[0].data[2],task->task[0].data[1],task->task[0].data[0]);
+	xdag_info("*#* new pre hash  %016llx%016llx%016llx%016llx t=%llx",task->task[0].data[3],
+            task->task[0].data[2],task->task[0].data[1],task->task[0].data[0], task->task_time);
     memcpy(task->nonce.data, block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(struct xdag_field));
     memcpy(task->lastfield.data, block[0].field[XDAG_BLOCK_FIELDS - 1].data, sizeof(struct xdag_field));
     memset(task->minhash.data, 0xff, sizeof(xdag_hash_t));
@@ -1134,7 +1137,9 @@ int do_rx_mining(struct xdag_block *block, struct block_internal **pretop, xtime
 	pthread_mutex_lock((pthread_mutex_t*)g_ptr_share_mutex);
 	memcpy(block[0].field[XDAG_BLOCK_FIELDS - 1].data, task->lastfield.data, sizeof(struct xdag_field));
 	pthread_mutex_unlock((pthread_mutex_t*)g_ptr_share_mutex);
-
+    xdag_info("mined last field: %016llx%016llx%016llx%016llx t=%llx",
+              task->lastfield.data[3], task->lastfield.data[2],
+              task->lastfield.data[1], task->lastfield.data[0], task->task_time);
 	return 1;
 }
 
@@ -1163,6 +1168,10 @@ begin:
     }
 
 	xdag_mess("Finish loading blocks, time cost %ldms", xdag_get_xtimestamp() - start);
+
+    if(is_pool()) {
+        rx_loading_fork_time();
+    }
 
 	// waiting for command "run"
 	while (!g_xdag_run) {
@@ -2111,6 +2120,8 @@ xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_ha
     memcpy(rx_hash_data[1], block->field[XDAG_BLOCK_FIELDS-1].data, sizeof(struct xdag_field));
     xdag_hash_t hash;
     if (rx_block_hash(rx_hash_data, sizeof(rx_hash_data), t, hash) == 0) {
+        xdag_info("rx hash for diff: %016llx%016llx%016llx%016llx t=%llx",
+                  hash[3], hash[2], hash[1], hash[0], t);
         return xdag_hash_difficulty(hash);
     } else {
         return xdag_hash_difficulty(tmp_hash);

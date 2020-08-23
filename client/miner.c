@@ -287,6 +287,7 @@ begin:
                         // if seed changed
                         if(xdag_cmphash(pre_task->task[1].data, task->task[1].data) != 0) {
                             rx_mine_init_dataset(task->task[1].data, sizeof(xdag_hash_t));
+                            xdag_info("New Mine Seed  : t=%llx N=%llu", task->task_time, task_index);
                         }
                     } else {
                         xdag_hash_set_state(task->ctx, data[0].data,
