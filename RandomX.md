@@ -65,7 +65,7 @@ DaggerMiner -cpu  -p <POOL_ADDRESS>:<POOL_PORT> -t <MINING_THREAD_NUMBER> -a <WA
 
 repository https://github.com/swordlet/DaggerRandomxMiner/tree/RandomX
 
-releasehttps://github.com/swordlet/DaggerRandomxMiner/releases/tag/Pre_0.4.0
+release https://github.com/swordlet/DaggerRandomxMiner/releases/tag/Pre_0.4.0
 
 miner not support GPU yet.
 
