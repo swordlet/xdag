@@ -65,7 +65,7 @@ DaggerMiner -cpu  -p <POOL_ADDRESS>:<POOL_PORT> -t <MINING_THREAD_NUMBER> -a <WA
 
 repository https://github.com/swordlet/DaggerRandomxMiner/tree/RandomX
 
-release https://github.com/swordlet/DaggerRandomxMiner/releases/tag/v0.4.0
+releasehttps://github.com/swordlet/DaggerRandomxMiner/releases/tag/Pre_0.4.0
 
 miner not support GPU yet.
 
@@ -77,8 +77,8 @@ miner not support GPU yet.
 
 - selecting seed block that `seedBlockHeight % 4096 == 0 `
 - using sha256 hash of seed block as new randomx seed
-- changing the seed  at time frame   `(Time frame of seedBlockHeight) + 128  `
-- pool algorithm fork at time frame   `(Time frame of RANDOMX_FORK_HEIGHT) + 128  `
+- changing the seed  after time frame   `(Time frame of seedBlockHeight) + 128  `
+- pool algorithm fork after time frame   `(Time frame of RANDOMX_FORK_HEIGHT) + 128  `
 
 #### mining
 
@@ -95,4 +95,23 @@ miner not support GPU yet.
 
 
 ## Implementations:
+
+#### constants
+
+in rx_hash.h
+
+```c
+#define SEEDHASH_EPOCH_BLOCKS   4096 // period of a randomx seed
+#define SEEDHASH_EPOCH_LAG    128 // lag time frames for switch randomx seed
+
+#define SEEDHASH_EPOCH_TESTNET_BLOCKS  16
+#define SEEDHASH_EPOCH_TESTNET_LAG    8
+
+// fork seed height, (time frame of RANDOMX_FORK_HEIGHT) + SEEDHASH_EPOCH_LAG = fork time frame
+#define RANDOMX_FORK_HEIGHT           1339392 
+
+// (time frame of RANDOMX_TESTNET_FORK_HEIGHT) + SEEDHASH_EPOCH_TESTNET_LAG = test netfork time frame
+// test net fork is at about height 24 (maybe less than height 24, because of time frame latency of set height) 
+#define RANDOMX_TESTNET_FORK_HEIGHT   16 
+```
 
