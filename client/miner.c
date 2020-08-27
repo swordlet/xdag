@@ -382,14 +382,12 @@ static void *mining_thread(void *arg)
 //			xdag_info("mining thread %lu start nonce %016llx",pthread_self(),nonce);
 		}
         if(g_xdag_mine_type == XDAG_RANDOMX) {
-            last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 1024,
+            last.amount = xdag_rx_mine_worker_hash(task->task[0].data, last.data, &nonce, 4096,
                                 g_xdag_mining_threads, hash);
-            g_xdag_extstats.nhashes += 1024;
         } else {
             last.amount = xdag_hash_final_multi(task->ctx, &nonce, 4096, g_xdag_mining_threads, hash);
-            g_xdag_extstats.nhashes += 4096;
         }
-
+        g_xdag_extstats.nhashes += 4096;
 		xdag_set_min_share(task, last.data, hash);
 	}
 

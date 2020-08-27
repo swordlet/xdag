@@ -397,7 +397,7 @@ int rx_block_hash(void* data,size_t data_size,xdag_frame_t block_time,void* outp
     rx_pool_mem *rx_memory;
 
     if (g_rx_hash_epoch_index == 0) { // no seed
-        xdag_info("#!!! rx hash epoch index are 0");
+        xdag_info("#!!! rx hash epoch index is 0");
         return -1;
     } else if (g_rx_hash_epoch_index == 1) { // first seed
         rx_memory = &g_rx_pool_mem[g_rx_hash_epoch_index & 1];
