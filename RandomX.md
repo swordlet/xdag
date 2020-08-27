@@ -104,14 +104,14 @@ in rx_hash.h
 #define SEEDHASH_EPOCH_BLOCKS   4096 // period of a randomx seed
 #define SEEDHASH_EPOCH_LAG    128 // lag time frames for switch randomx seed
 
-#define SEEDHASH_EPOCH_TESTNET_BLOCKS  16
-#define SEEDHASH_EPOCH_TESTNET_LAG    8
+#define SEEDHASH_EPOCH_TESTNET_BLOCKS  64
+#define SEEDHASH_EPOCH_TESTNET_LAG    32
 
 // fork seed height, (time frame of RANDOMX_FORK_HEIGHT) + SEEDHASH_EPOCH_LAG = fork time frame
 #define RANDOMX_FORK_HEIGHT           1339392 
 
 // (time frame of RANDOMX_TESTNET_FORK_HEIGHT) + SEEDHASH_EPOCH_TESTNET_LAG = test netfork time frame
 // test net fork is at about height 24 (maybe less than height 24, because of time frame latency of set height) 
-#define RANDOMX_TESTNET_FORK_HEIGHT   16 
+#define RANDOMX_TESTNET_FORK_HEIGHT   196288 // 196288 % 64 = 0
 ```
 
