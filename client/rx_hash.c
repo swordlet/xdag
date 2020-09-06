@@ -20,10 +20,6 @@ uint64_t g_rx_pool_mem_index = 0;
 uint64_t g_rx_hash_epoch_index = 0;
 rx_pool_mem g_rx_pool_mem[2];   // two randomx seeds cover 8192 main blocks(about 6 days)
 
-// global pool randomx dataset used by both two seed
-// when a seed using this datset (full mode), its previous seed using light mode (only using cache)
-randomx_dataset *g_rx_pool_dataset = NULL;
-
 static randomx_flags g_randomx_flags = RANDOMX_FLAG_DEFAULT;
 
 static pthread_rwlock_t  g_rx_memory_rwlock[2] = {
@@ -129,9 +125,8 @@ void rx_init_flags(int is_full_mem, uint32_t init_thread_count) {
 
     g_randomx_flags = randomx_get_flags();
 
-    if (is_full_mem == 0) {
-        g_randomx_flags |= RANDOMX_FLAG_LARGE_PAGES; // TODO: LARGE PAGES for miner and pool
-    } else {
+    g_randomx_flags |= RANDOMX_FLAG_LARGE_PAGES;
+    if (is_full_mem == 1) {
         g_randomx_flags |= RANDOMX_FLAG_FULL_MEM;
     }
 
@@ -325,14 +320,14 @@ static void rx_pool_init_dataset(randomx_cache *rx_cache, randomx_dataset *rx_da
 
         si = (rx_seed_info*)malloc(thread_count * sizeof(rx_seed_info));
         if (si == NULL){
-            xdag_fatal("Couldn't allocate RandomX mining threadinfo");
+            xdag_fatal("Couldn't allocate RandomX seed threadinfo");
             return;
         }
 
         st = (pthread_t*)malloc(thread_count * sizeof(pthread_t));
         if (st == NULL) {
             free(si);
-            xdag_fatal("Couldn't allocate RandomX mining threadlist");
+            xdag_fatal("Couldn't allocate RandomX seed threadlist");
             return;
         }
 
@@ -448,19 +443,6 @@ int rx_update_vm(randomx_vm **vm, randomx_cache *cache, randomx_dataset *dataset
     return 0;
 }
 
-// previous seed turn to use light mode
-int rx_release_prev_dataset(uint64_t mem_index) {
-    pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[(mem_index-1) & 1];
-    rx_pool_mem *prev_memory = &g_rx_pool_mem[(mem_index-1) & 1];
-    pthread_rwlock_wrlock(rwlock);
-    if (prev_memory->rx_dataset != NULL) {
-        randomx_vm_set_cache(prev_memory->pool_vm, prev_memory->rx_cache);
-        randomx_vm_set_cache(prev_memory->block_vm, prev_memory->rx_cache);
-    }
-    pthread_rwlock_unlock(rwlock);
-    return 0;
-}
-
 int rx_pool_update_seed(uint64_t mem_index) {
 
     pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[mem_index & 1];
@@ -482,19 +464,15 @@ int rx_pool_update_seed(uint64_t mem_index) {
         randomx_init_cache(rx_memory->rx_cache, rx_memory->seed, sizeof(rx_memory->seed));
     }
     if (g_randomx_flags & RANDOMX_FLAG_FULL_MEM) {
-        xdag_info("release previous rx dataset ...");
-        rx_release_prev_dataset(mem_index);
-
-        if (g_rx_pool_dataset == NULL) {
+        if (rx_memory->rx_dataset == NULL) {
             xdag_info("alloc pool rx dataset ...");
-            g_rx_pool_dataset = randomx_alloc_dataset(g_randomx_flags);
+            rx_memory->rx_dataset = randomx_alloc_dataset(g_randomx_flags);
             if (rx_memory->rx_dataset == NULL) {
                 pthread_rwlock_unlock(rwlock);
                 rx_abort("alloc dataset failed");
                 return -1;
             }
         }
-        rx_memory->rx_dataset = g_rx_pool_dataset;
         if (rx_memory->rx_dataset != NULL) {
             xdag_info("update pool rx dataset ...");
             rx_pool_init_dataset(rx_memory->rx_cache, rx_memory->rx_dataset, 4);

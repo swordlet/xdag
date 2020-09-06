@@ -20,13 +20,13 @@ sudo make install
 Temporary (until next reboot) reserve huge pages
 
 ```bash
-sudo sysctl -w vm.nr_hugepages=1280
+sudo sysctl -w vm.nr_hugepages=2880
 ```
 
 Permanent huge pages reservation
 
 ```bash
-sudo bash -c "echo vm.nr_hugepages=1280 >> /etc/sysctl.conf"
+sudo bash -c "echo vm.nr_hugepages=2880 >> /etc/sysctl.conf"
 ```
 
 

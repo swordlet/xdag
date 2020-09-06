@@ -133,7 +133,7 @@ int xdag_init(int argc, char **argv, int isGui)
 		}
 	} else {
         if(g_xdag_mine_type == XDAG_RANDOMX){
-            rx_init_flags(0, 0); // TODO: use full memory mode in pool
+            rx_init_flags((int)g_xdag_rx_mode, 0);
         }
 		if(setup_pool(&parameters) < 0) {
 			return -1;
@@ -218,6 +218,16 @@ int parse_startup_parameters(int argc, char **argv, struct startup_parameters *p
 			}
 		} else if(ARG_EQUAL(argv[i], "-randomx", "")){
             g_xdag_mine_type = XDAG_RANDOMX;
+            if(++i < argc) {
+                if(ARG_EQUAL(argv[i], "l", "L")) {
+                    g_xdag_rx_mode = RANDOMX_LIGHT;
+                } else if(ARG_EQUAL(argv[i], "f", "F")) {
+                    g_xdag_rx_mode = RANDOMX_FAST;
+                } else {
+                    printf("Illevel use of option -randomx\n");
+                    return -1;
+                }
+            }
 		} else if(ARG_EQUAL(argv[i], "-r", "")) { /* load blocks and wait for run command */
 			g_xdag_run = 0;
 		} else if(ARG_EQUAL(argv[i], "-s", "")) { /* address of this node */
