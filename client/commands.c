@@ -638,10 +638,10 @@ void processStatsCommand(FILE *out)
 
 void processExitCommand()
 {
-    if(is_wallet()) {
-        rx_miner_release_mem();
-    }
-
+//    if(is_wallet()) {
+//        rx_miner_release_mem();
+//    }
+//
     if(is_pool()) {
         rx_pool_release_mem();
     }

@@ -13,8 +13,8 @@
 #include "global.h"
 #include "block.h"
 
-#define SEEDHASH_EPOCH_BLOCKS	4096
-#define SEEDHASH_EPOCH_LAG		128 // lag time frames
+#define SEEDHASH_EPOCH_BLOCKS   4096
+#define SEEDHASH_EPOCH_LAG      128 // lag time frames
 
 #define SEEDHASH_EPOCH_TESTNET_BLOCKS	64
 #define SEEDHASH_EPOCH_TESTNET_LAG		32
@@ -61,8 +61,6 @@ extern int rx_pool_calc_hash(void* data,size_t data_size,xdag_frame_t task_time,
 extern int rx_block_hash(void* data,size_t data_size,xdag_frame_t block_time,void* output_hash);
 // create & update pool randomx cache, vm , dataset
 extern int rx_pool_update_seed(uint64_t mem_index);
-// release miner randomx cache and dataset
-extern void rx_miner_release_mem(void);
 // release pool randomx vm, cache and dataset
 extern void rx_pool_release_mem(void);
 // load randomx fork time and init randomx when pool's restart with height greater than fork height
