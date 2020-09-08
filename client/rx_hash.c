@@ -20,10 +20,6 @@ uint64_t g_rx_pool_mem_index = 0;
 uint64_t g_rx_hash_epoch_index = 0;
 rx_pool_mem g_rx_pool_mem[2];   // two randomx seeds cover 8192 main blocks(about 6 days)
 
-// global pool randomx dataset used by both two seed
-// when a seed using this datset (full mode), its previous seed using light mode (only using cache)
-randomx_dataset *g_rx_pool_dataset = NULL;
-
 static randomx_flags g_randomx_flags = RANDOMX_FLAG_DEFAULT;
 
 static pthread_rwlock_t  g_rx_memory_rwlock[2] = {
@@ -46,7 +42,6 @@ static uint32_t g_mine_n_threads;
 
 static pthread_mutex_t g_rx_dataset_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int rx_release_prev_dataset(uint64_t mem_index);
 int rx_update_vm(randomx_vm **vm, randomx_cache *cache, randomx_dataset *dataset);
 
 static void rx_abort(const char *msg){
@@ -72,14 +67,18 @@ inline void  rx_set_fork_time(struct block_internal *m) {
             g_rx_fork_time = MAIN_TIME(m->time) + g_rx_fork_lag;
             xdag_info("*#*from %llu,%llx, set fork time to %llx", m->height, m->time, g_rx_fork_time);
         }
-        if ((m->height & seed_epoch) == 0 && xdag_cmphash(next_rx_mem->seed, m->hash) != 0) {
-            memcpy(next_rx_mem->seed, m->hash, sizeof(xdag_hashlow_t));
+        xdag_hashlow_t hash = {0};
+        if ((m->height & seed_epoch) == 0 ) {
             next_rx_mem->switch_time = MAIN_TIME(m->time) + g_rx_fork_lag + 1;
             next_rx_mem->seed_time = m->time;
             next_rx_mem->seed_height = m->height;
             xdag_info("*#*from %llu,%llx, set switch time to %llx", m->height, m->time,
                       next_rx_mem->switch_time);
-            rx_pool_update_seed(next_mem_index);
+            if (!xd_rsdb_get_heighthash(m->height - g_rx_fork_lag, hash) &&
+                    xdag_cmphash(next_rx_mem->seed, hash) != 0) {
+                memcpy(next_rx_mem->seed, hash, sizeof(xdag_hashlow_t));
+                rx_pool_update_seed(next_mem_index);
+            }
             g_rx_hash_epoch_index = next_mem_index;
             next_rx_mem->is_switched = 0;
         }
@@ -129,9 +128,8 @@ void rx_init_flags(int is_full_mem, uint32_t init_thread_count) {
 
     g_randomx_flags = randomx_get_flags();
 
-    if (is_full_mem == 0) {
-        g_randomx_flags |= RANDOMX_FLAG_LARGE_PAGES; // TODO: LARGE PAGES for miner and pool
-    } else {
+    g_randomx_flags |= RANDOMX_FLAG_LARGE_PAGES;
+    if (is_full_mem == 1) {
         g_randomx_flags |= RANDOMX_FLAG_FULL_MEM;
     }
 
@@ -325,14 +323,14 @@ static void rx_pool_init_dataset(randomx_cache *rx_cache, randomx_dataset *rx_da
 
         si = (rx_seed_info*)malloc(thread_count * sizeof(rx_seed_info));
         if (si == NULL){
-            xdag_fatal("Couldn't allocate RandomX mining threadinfo");
+            xdag_fatal("Couldn't allocate RandomX seed threadinfo");
             return;
         }
 
         st = (pthread_t*)malloc(thread_count * sizeof(pthread_t));
         if (st == NULL) {
             free(si);
-            xdag_fatal("Couldn't allocate RandomX mining threadlist");
+            xdag_fatal("Couldn't allocate RandomX seed threadlist");
             return;
         }
 
@@ -448,19 +446,6 @@ int rx_update_vm(randomx_vm **vm, randomx_cache *cache, randomx_dataset *dataset
     return 0;
 }
 
-// previous seed turn to use light mode
-int rx_release_prev_dataset(uint64_t mem_index) {
-    pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[(mem_index-1) & 1];
-    rx_pool_mem *prev_memory = &g_rx_pool_mem[(mem_index-1) & 1];
-    pthread_rwlock_wrlock(rwlock);
-    if (prev_memory->rx_dataset != NULL) {
-        randomx_vm_set_cache(prev_memory->pool_vm, prev_memory->rx_cache);
-        randomx_vm_set_cache(prev_memory->block_vm, prev_memory->rx_cache);
-    }
-    pthread_rwlock_unlock(rwlock);
-    return 0;
-}
-
 int rx_pool_update_seed(uint64_t mem_index) {
 
     pthread_rwlock_t *rwlock = &g_rx_memory_rwlock[mem_index & 1];
@@ -482,19 +467,15 @@ int rx_pool_update_seed(uint64_t mem_index) {
         randomx_init_cache(rx_memory->rx_cache, rx_memory->seed, sizeof(rx_memory->seed));
     }
     if (g_randomx_flags & RANDOMX_FLAG_FULL_MEM) {
-        xdag_info("release previous rx dataset ...");
-        rx_release_prev_dataset(mem_index);
-
-        if (g_rx_pool_dataset == NULL) {
+        if (rx_memory->rx_dataset == NULL) {
             xdag_info("alloc pool rx dataset ...");
-            g_rx_pool_dataset = randomx_alloc_dataset(g_randomx_flags);
+            rx_memory->rx_dataset = randomx_alloc_dataset(g_randomx_flags);
             if (rx_memory->rx_dataset == NULL) {
                 pthread_rwlock_unlock(rwlock);
                 rx_abort("alloc dataset failed");
                 return -1;
             }
         }
-        rx_memory->rx_dataset = g_rx_pool_dataset;
         if (rx_memory->rx_dataset != NULL) {
             xdag_info("update pool rx dataset ...");
             rx_pool_init_dataset(rx_memory->rx_cache, rx_memory->rx_dataset, 4);
@@ -556,49 +537,54 @@ void rx_pool_release_mem(void) {
 void rx_loading_fork_time(void) {    // node start height greater than g_rx_fork_seed_height
     xdag_hashlow_t hash = {0};
     struct block_internal b;
-    if(!xd_rsdb_get_heighthash(g_rx_fork_seed_height, hash)) {
+    xdag_hashlow_t hash_seed = {0};
+    if (g_xdag_stats.nmain >= g_rx_fork_seed_height) {
+        if (!xd_rsdb_get_heighthash(g_rx_fork_seed_height, hash)) {
 
-        if (!xd_rsdb_get_bi(hash, &b)) {
-            g_rx_fork_time = MAIN_TIME(b.time) + g_rx_fork_lag;
-            xdag_info("loading fork time to %16llx", g_rx_fork_time);
-        }
-    }
-    uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
-    seed_epoch -= 1; // 15:4095
-    uint64_t seed_height = g_xdag_stats.nmain & ~seed_epoch;
-    uint64_t pre_seed_height = seed_height - seed_epoch -1;
-
-    if (pre_seed_height >= g_rx_fork_seed_height) {
-        if(!xd_rsdb_get_heighthash(pre_seed_height, hash)) {
             if (!xd_rsdb_get_bi(hash, &b)) {
-                uint64_t mem_index = g_rx_hash_epoch_index + 1;
-                rx_pool_mem *rx_mem = &g_rx_pool_mem[mem_index & 1];
-                memcpy(rx_mem->seed, hash, sizeof(xdag_hashlow_t));
-                rx_mem->switch_time = MAIN_TIME(b.time) + g_rx_fork_lag + 1;
-                rx_mem->seed_time = b.time;
-                rx_mem->seed_height = b.height;
-                xdag_info("loading previous rx pool mem %llu,%llx, set switch time to %llx", b.height, b.time,
-                          rx_mem->switch_time);
-                rx_pool_update_seed(mem_index);
-                g_rx_hash_epoch_index = mem_index;
-                rx_mem->is_switched = 1;
+                g_rx_fork_time = MAIN_TIME(b.time) + g_rx_fork_lag;
+                xdag_info("loading fork time to %16llx", g_rx_fork_time);
             }
         }
-    }
-    if (seed_height >= g_rx_fork_seed_height) {
-        if(!xd_rsdb_get_heighthash(seed_height, hash)) {
-            if (!xd_rsdb_get_bi(hash, &b)) {
-                uint64_t mem_index = g_rx_hash_epoch_index + 1;
-                rx_pool_mem *rx_mem = &g_rx_pool_mem[mem_index & 1];
-                memcpy(rx_mem->seed, hash, sizeof(xdag_hashlow_t));
-                rx_mem->switch_time = MAIN_TIME(b.time) + g_rx_fork_lag + 1;
-                rx_mem->seed_time = b.time;
-                rx_mem->seed_height = b.height;
-                xdag_info("loading current rx pool mem %llu,%llx, set switch time to %llx", b.height, b.time,
-                          rx_mem->switch_time);
-                rx_pool_update_seed(mem_index);
-                g_rx_hash_epoch_index = mem_index;
-                rx_mem->is_switched = 0;
+        uint64_t seed_epoch = g_xdag_testnet ? SEEDHASH_EPOCH_TESTNET_BLOCKS : SEEDHASH_EPOCH_BLOCKS;
+        seed_epoch -= 1; // 15:4095
+        uint64_t seed_height = g_xdag_stats.nmain & ~seed_epoch ;
+        uint64_t pre_seed_height = seed_height - seed_epoch - 1;
+
+        if (pre_seed_height >= g_rx_fork_seed_height) {
+            if (!xd_rsdb_get_heighthash(pre_seed_height, hash) &&
+                    !xd_rsdb_get_heighthash(pre_seed_height - g_rx_fork_lag, hash_seed)) {
+                if (!xd_rsdb_get_bi(hash, &b)) {
+                    uint64_t mem_index = g_rx_hash_epoch_index + 1;
+                    rx_pool_mem *rx_mem = &g_rx_pool_mem[mem_index & 1];
+                    memcpy(rx_mem->seed, hash_seed, sizeof(xdag_hashlow_t));
+                    rx_mem->switch_time = MAIN_TIME(b.time) + g_rx_fork_lag + 1;
+                    rx_mem->seed_time = b.time;
+                    rx_mem->seed_height = b.height;
+                    xdag_info("loading previous rx pool mem %llu,%llx, set switch time to %llx", b.height, b.time,
+                              rx_mem->switch_time);
+                    rx_pool_update_seed(mem_index);
+                    g_rx_hash_epoch_index = mem_index;
+                    rx_mem->is_switched = 1;
+                }
+            }
+        }
+        if (seed_height >= g_rx_fork_seed_height) {
+            if (!xd_rsdb_get_heighthash(seed_height, hash) &&
+                    !xd_rsdb_get_heighthash(seed_height - g_rx_fork_lag, hash_seed)) {
+                if (!xd_rsdb_get_bi(hash, &b)) {
+                    uint64_t mem_index = g_rx_hash_epoch_index + 1;
+                    rx_pool_mem *rx_mem = &g_rx_pool_mem[mem_index & 1];
+                    memcpy(rx_mem->seed, hash_seed, sizeof(xdag_hashlow_t));
+                    rx_mem->switch_time = MAIN_TIME(b.time) + g_rx_fork_lag + 1;
+                    rx_mem->seed_time = b.time;
+                    rx_mem->seed_height = b.height;
+                    xdag_info("loading current rx pool mem %llu,%llx, set switch time to %llx", b.height, b.time,
+                              rx_mem->switch_time);
+                    rx_pool_update_seed(mem_index);
+                    g_rx_hash_epoch_index = mem_index;
+                    rx_mem->is_switched = 0;
+                }
             }
         }
     }

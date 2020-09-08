@@ -9,6 +9,7 @@ struct xdag_ext_stats g_xdag_extstats;
 int g_disable_mining = 0;
 enum xdag_type g_xdag_type = XDAG_POOL;
 enum xdag_mine_type g_xdag_mine_type = XDAG_RAW;
+enum randomx_mode g_xdag_rx_mode = RANDOMX_LIGHT;
 char *g_coinname, *g_progname;
 xd_rsdb_t  *g_xdag_rsdb = NULL;
 xdag_hashlow_t g_ourfirst_hash = {0};

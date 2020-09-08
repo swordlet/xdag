@@ -20,13 +20,13 @@ sudo make install
 Temporary (until next reboot) reserve huge pages
 
 ```bash
-sudo sysctl -w vm.nr_hugepages=1280
+sudo sysctl -w vm.nr_hugepages=2880
 ```
 
 Permanent huge pages reservation
 
 ```bash
-sudo bash -c "echo vm.nr_hugepages=1280 >> /etc/sysctl.conf"
+sudo bash -c "echo vm.nr_hugepages=2880 >> /etc/sysctl.conf"
 ```
 
 
@@ -34,13 +34,19 @@ sudo bash -c "echo vm.nr_hugepages=1280 >> /etc/sysctl.conf"
 ## Launch parameters (test net):
 
 #### pool
-
+##### RandomX light mode:
 ```bash
-./xdag -t -randomx -disable-refresh -f pool.config -threads 1
+./xdag -t -randomx l -disable-refresh -f pool.config -threads 1
 ```
-
+##### RandomX fast mode:
+```bash
+./xdag -t -randomx f -disable-refresh -f pool.config -threads 1
+```
 The pool will switch to randomx algorithm, when fork time frame ( defined by constant in rx_hash.h) coming , automatically. 
 
+light mode: slower hash speed and less memory usage (about 0.5GB)
+
+fast mode: faster hash speed and more memory usage (more than 5GB)
 #### miner
 
 ##### before RandomX fork:
@@ -52,7 +58,7 @@ The pool will switch to randomx algorithm, when fork time frame ( defined by con
 ##### after RandomX fork:
 
 ```bash
-./xdag -t -randomx -m <MINING_THREAD_NUMBER> <POOL_ADDRESS>:<POOL_PORT> -a <WALLET_ADDRESS>
+./xdag -t -randomx f -m <MINING_THREAD_NUMBER> <POOL_ADDRESS>:<POOL_PORT> -a <WALLET_ADDRESS>
 ```
 
 The miner can't change PoW algorithm automatically.   So miner must turn on switch '-randomx‘  after algorithm fork manually.
@@ -75,9 +81,9 @@ miner not support GPU yet.
 
 #### algorithm seed and fork 
 
-- selecting seed block that `seedBlockHeight % 4096 == 0 `
+- selecting seed block that `(seedBlockHeight + 128) % 4096 == 0 `
 - using sha256 hash of seed block as new randomx seed
-- changing the seed  after time frame   `(Time frame of seedBlockHeight) + 128  `
+- changing the seed  after time frame   `(Time frame of (seedBlockHeight + 128)) + 128  `
 - pool algorithm fork after time frame   `(Time frame of RANDOMX_FORK_HEIGHT) + 128  `
 
 #### mining

@@ -46,6 +46,11 @@ enum xdag_mine_type {
 	XDAG_RANDOMX = 2
 };
 
+enum randomx_mode {
+	RANDOMX_LIGHT = 0,
+	RANDOMX_FAST = 1
+};
+
 // defines if xdag started as a pool or a wallet
 extern enum xdag_type g_xdag_type;
 
@@ -66,6 +71,7 @@ extern int g_disable_mining;
 
 //defines mine type for randomx
 extern enum xdag_mine_type g_xdag_mine_type;
+extern enum randomx_mode g_xdag_rx_mode;
 
 extern xd_rsdb_t *g_xdag_rsdb;
 
