@@ -519,6 +519,9 @@ void printUsage(char* appName)
 		"  -rpc-enable    - enable JSON-RPC service\n"
 		"  -rpc-port      - set HTTP JSON-RPC port (default is 7667)\n"
 		"  -threads N     - create N transport layer threads for pool (default is 6)\n"
+        "  -randomx MODE  - set randomx mode for pool (miners ignore this, always use fast mode), MODE: \n"
+        "                     l - light mode, lower hash speed, less memeory usage(0.5GB),\n"
+        "                     f - fast mode, higher hash speed, more memeory usage(5GB),\n"
 		"  -dm            - disable mining on pool (-P option is ignored)\n"
 		"  -tag           - tag for pool to distingush pools. Max length is 32 chars\n"
 		, appName);
