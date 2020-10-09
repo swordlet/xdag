@@ -29,7 +29,13 @@ Permanent huge pages reservation
 sudo bash -c "echo vm.nr_hugepages=2560 >> /etc/sysctl.conf"
 ```
 
+- A pool using randomx of full mode needs 2560 huge pages
 
+- A pool using randomx of light mode needs 256 huge pages
+
+- A miner using randomx hash needs 1280 huge pages
+
+When multiple nodes running on one machine, the huge pages number should be the accumulation of all nodes
 
 ## Launch parameters (test net):
 
