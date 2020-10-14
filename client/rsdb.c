@@ -416,6 +416,27 @@ xd_rsdb_op_t xd_rsdb_get_heighthash(uint64_t height, xdag_hashlow_t hash)
     return XDAG_RSDB_OP_SUCCESS;
 }
 
+xd_rsdb_op_t xd_rsdb_get_rxhash(xdag_hashlow_t hash, xdag_hash_t rx_hash)
+{
+    if (!hash) return XDAG_RSDB_NULL;
+    size_t vlen = 0;
+    char key[RSDB_KEY_LEN] = {[0] = HASH_RANDOMX_HASH};
+    memcpy(key + 1, hash, RSDB_KEY_LEN - 1 );
+    char *value = xd_rsdb_getkey(key, RSDB_KEY_LEN, &vlen);
+    if(!value)
+        return XDAG_RSDB_NULL;
+
+    if(vlen != sizeof(xdag_hash_t)){
+        xdag_err("vlen is not math size of xdag_hashlow_t\n");
+        free(value);
+        return XDAG_RSDB_NULL;
+    }
+    memcpy(rx_hash, value, vlen);
+    free(value);
+
+    return XDAG_RSDB_OP_SUCCESS;
+}
+
 // put
 xd_rsdb_op_t xd_rsdb_putkey(const char* key, size_t klen, const char* value, size_t vlen)
 {
@@ -534,6 +555,19 @@ xd_rsdb_op_t xd_rsdb_put_heighthash(uint64_t height, xdag_hashlow_t hash)
     char key[sizeof(uint64_t) + 1] = {[0] = HEIGHT_BLOCK_HASH};
     memcpy(key + 1, &height, sizeof(uint64_t));
     retcode = xd_rsdb_putkey(key, sizeof(uint64_t) + 1, (const char *)hash, sizeof(xdag_hashlow_t));
+    if(retcode) {
+        return retcode;
+    }
+    return XDAG_RSDB_OP_SUCCESS;
+}
+
+xd_rsdb_op_t xd_rsdb_put_rxhash(xdag_hashlow_t hash, xdag_hash_t rx_hash)
+{
+    int retcode = 0;
+    if(!hash) return XDAG_RSDB_NULL;
+    char key[RSDB_KEY_LEN] = {[0] = HASH_RANDOMX_HASH};
+    memcpy(key + 1, hash, RSDB_KEY_LEN - 1);
+    retcode = xd_rsdb_putkey(key, RSDB_KEY_LEN, (const char *)rx_hash, sizeof(xdag_hash_t));
     if(retcode) {
         return retcode;
     }

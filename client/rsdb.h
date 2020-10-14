@@ -68,7 +68,8 @@ typedef enum xd_rsdb_key_type {
     HASH_BLOCK_REMARK                     =  0x24,
     HASH_BLOCK_BACKREF                    =  0x25,
     HASH_BLOCK_CACHE                      =  0x26,
-    HEIGHT_BLOCK_HASH                     =  0x27
+    HEIGHT_BLOCK_HASH                     =  0x27,
+    HASH_RANDOMX_HASH                     =  0x28
 } xd_rsdb_key_t;
 
 char* xd_rsdb_full_merge(void* state, const char* key, size_t key_length,
@@ -102,6 +103,7 @@ xd_rsdb_op_t xd_rsdb_get_stats(void);
 xd_rsdb_op_t xd_rsdb_get_extstats(void);
 xd_rsdb_op_t xd_rsdb_get_remark(xdag_hashlow_t hash, xdag_remark_t);
 xd_rsdb_op_t xd_rsdb_get_heighthash(uint64_t height, xdag_hashlow_t hash);
+xd_rsdb_op_t xd_rsdb_get_rxhash(xdag_hashlow_t hash, xdag_hash_t rx_hash);
 
 //put
 xd_rsdb_op_t xd_rsdb_putkey(const char* key, size_t klen, const char* value, size_t vlen);
@@ -115,6 +117,7 @@ xd_rsdb_op_t xd_rsdb_put_extstats(void);
 xd_rsdb_op_t xd_rsdb_put_remark(struct block_internal *bi, xdag_remark_t strbuf);
 xd_rsdb_op_t xd_rsdb_put_cacheblock(xdag_hashlow_t hash, struct xdag_block *xb);
 xd_rsdb_op_t xd_rsdb_put_heighthash(uint64_t height, xdag_hashlow_t hash);
+xd_rsdb_op_t xd_rsdb_put_rxhash(xdag_hashlow_t hash, xdag_hash_t rx_hash);
 
 //del
 xd_rsdb_op_t xd_rsdb_delkey(const char* key, size_t klen);

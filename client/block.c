@@ -1697,8 +1697,16 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	fprintf(out, "  file pos: %llx\n", (unsigned long long)bi->storage_pos);
     fprintf(out, "      file: storage%s/%02x/%02x/%02x/%02x.dat\n", (g_xdag_testnet ? "-testnet" : ""),
         (int)((bi->time) >> 40)&0xff, (int)((bi->time) >> 32)&0xff, (int)((bi->time) >> 24)&0xff, (int)((bi->time) >> 16)&0xff);
-	fprintf(out, "      hash: %016llx%016llx%016llx%016llx\n",
-		(unsigned long long)h[3], (unsigned long long)h[2], (unsigned long long)h[1], (unsigned long long)h[0]);
+
+    xdag_hash_t rx_hash = {0};
+    if((bi->flags & BI_MAIN) && !xd_rsdb_get_rxhash(bi->hash, rx_hash)) {
+        fprintf(out, "      hash: %016llx%016llx%016llx%016llx\n",
+            (unsigned long long)rx_hash[3], (unsigned long long)rx_hash[2], (unsigned long long)rx_hash[1], (unsigned long long)rx_hash[0]);
+    } else {
+        fprintf(out, "      hash: %016llx%016llx%016llx%016llx\n",
+            (unsigned long long)h[3], (unsigned long long)h[2], (unsigned long long)h[1], (unsigned long long)h[0]);
+    }
+
 	fprintf(out, "    remark: %s\n", remark);
 	fprintf(out, "difficulty: %llx%016llx\n", xdag_diff_args(bi->difficulty));
 	xdag_hash2address(h, address);
@@ -2163,16 +2171,17 @@ static inline void add_ourblock(struct block_internal *nodeBlock)
     xd_rsdb_put_setting(SETTING_OUR_LAST_HASH, (const char *) g_ourlast_hash, sizeof(g_ourlast_hash));
 }
 
-xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_hash_t tmp_hash) {
+xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_hash_t sha_hash) {
     xdag_hash_t rx_hash_data[2];
     xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_hash_data[0]);
     memcpy(rx_hash_data[1], block->field[XDAG_BLOCK_FIELDS-1].data, sizeof(struct xdag_field));
-    xdag_hash_t hash;
-    if (rx_block_hash(rx_hash_data, sizeof(rx_hash_data), t, hash) == 0) {
+    xdag_hash_t rx_hash;
+    if (rx_block_hash(rx_hash_data, sizeof(rx_hash_data), t, rx_hash) == 0) {
         xdag_info("rx hash for diff: %016llx%016llx%016llx%016llx t=%llx",
-                  hash[3], hash[2], hash[1], hash[0], t);
-        return xdag_hash_difficulty(hash);
+                  rx_hash[3], rx_hash[2], rx_hash[1], rx_hash[0], t);
+        xd_rsdb_put_rxhash(sha_hash, rx_hash);
+        return xdag_hash_difficulty(rx_hash);
     } else {
-        return xdag_hash_difficulty(tmp_hash);
+        return xdag_hash_difficulty(sha_hash);
     }
 }
