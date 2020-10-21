@@ -42,11 +42,11 @@ When multiple nodes running on one machine, the huge pages number should be the 
 #### pool
 ##### RandomX light mode:
 ```bash
-./xdag -t -randomx l -disable-refresh -f pool.config -threads 1
+./xdag -t -randomx l -disable-refresh -f pool.config
 ```
 ##### RandomX fast mode:
 ```bash
-./xdag -t -randomx f -disable-refresh -f pool.config -threads 1
+./xdag -t -randomx f -disable-refresh -f pool.config
 ```
 The pool will switch to randomx algorithm, when fork time frame ( defined by constant in rx_hash.h) coming , automatically. 
 
@@ -67,7 +67,7 @@ fast mode: faster hash speed and more memory usage (more than 5GB)
 ./xdag -t -randomx f -m <MINING_THREAD_NUMBER> <POOL_ADDRESS>:<POOL_PORT> -a <WALLET_ADDRESS>
 ```
 
-The miner can't change PoW algorithm automatically.   So miner must turn on switch '-randomx‘  after algorithm fork manually.
+The miner can't change PoW algorithm automatically.   So miner must turn on switch '-randomx'  after algorithm fork manually.
 
 ##### Windows x64 CPU RandowX Miner 
 
@@ -91,6 +91,7 @@ miner not support GPU yet.
 - using sha256 hash of seed block as new randomx seed
 - changing the seed  after time frame   `(Time frame of (seedBlockHeight + 128)) + 128  `
 - pool algorithm fork after time frame   `(Time frame of RANDOMX_FORK_HEIGHT) + 128  `
+- pre set next switch time and next seed when height % 4096 == 0
 
 #### mining
 
@@ -122,8 +123,7 @@ in rx_hash.h
 // fork seed height, (time frame of RANDOMX_FORK_HEIGHT) + SEEDHASH_EPOCH_LAG = fork time frame
 #define RANDOMX_FORK_HEIGHT           1339392 
 
-// (time frame of RANDOMX_TESTNET_FORK_HEIGHT) + SEEDHASH_EPOCH_TESTNET_LAG = test netfork time frame
-// test net fork is at about height 24 (maybe less than height 24, because of time frame latency of set height) 
+// (time frame of RANDOMX_TESTNET_FORK_HEIGHT) + SEEDHASH_EPOCH_TESTNET_LAG = test net fork time frame
 #define RANDOMX_TESTNET_FORK_HEIGHT   196288 // 196288 % 64 = 0
 ```
 
