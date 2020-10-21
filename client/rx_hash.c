@@ -63,7 +63,7 @@ inline void  rx_set_fork_time(struct block_internal *m) {
        uint64_t next_mem_index = g_rx_hash_epoch_index + 1;
        rx_pool_mem *next_rx_mem = &g_rx_pool_mem[next_mem_index & 1];
         if (m->height == g_rx_fork_seed_height) {
-            // node start height less than g_rx_fork_seed_height
+            // node start before g_rx_fork_seed_height
             g_rx_fork_time = MAIN_TIME(m->time) + g_rx_fork_lag;
             xdag_info("*#*from %llu,%llx, set fork time to %llx", m->height, m->time, g_rx_fork_time);
         }
@@ -76,6 +76,7 @@ inline void  rx_set_fork_time(struct block_internal *m) {
                       next_rx_mem->switch_time);
             if (!xd_rsdb_get_heighthash(m->height - g_rx_fork_lag, hash) &&
                     xdag_cmphash(next_rx_mem->seed, hash) != 0) {
+                // to avoid main block roll back, get prior 128 height hash as seed
                 memcpy(next_rx_mem->seed, hash, sizeof(xdag_hashlow_t));
                 rx_pool_update_seed(next_mem_index);
             }

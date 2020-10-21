@@ -1700,6 +1700,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 
     xdag_hash_t rx_hash = {0};
     if((bi->flags & BI_MAIN) && !xd_rsdb_get_rxhash(bi->hash, rx_hash)) {
+        // display randomx hash for main block
         fprintf(out, "      hash: %016llx%016llx%016llx%016llx\n",
             (unsigned long long)rx_hash[3], (unsigned long long)rx_hash[2], (unsigned long long)rx_hash[1], (unsigned long long)rx_hash[0]);
     } else {
@@ -2171,6 +2172,7 @@ static inline void add_ourblock(struct block_internal *nodeBlock)
     xd_rsdb_put_setting(SETTING_OUR_LAST_HASH, (const char *) g_ourlast_hash, sizeof(g_ourlast_hash));
 }
 
+// block difficulty by randomx hash
 xdag_diff_t rx_hash_difficulty(struct xdag_block *block, xdag_frame_t t, xdag_hash_t sha_hash) {
     xdag_hash_t rx_hash_data[2];
     xdag_rx_pre_hash(block,sizeof(struct xdag_block) - 1 * sizeof(struct xdag_field),rx_hash_data[0]);

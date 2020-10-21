@@ -39,8 +39,8 @@ extern "C"
 {
 #endif
 extern rx_pool_mem g_rx_pool_mem[2];
-extern uint64_t g_rx_pool_mem_index;
-extern uint64_t g_rx_hash_epoch_index;
+extern uint64_t g_rx_pool_mem_index; // global index of pool randomx memory (dataset, cache), increased by switch time
+extern uint64_t g_rx_hash_epoch_index; // global index of randomx seed, increased by blocks height
 extern xdag_frame_t g_rx_fork_time;
 
 extern int is_randomx_fork(xdag_frame_t);
