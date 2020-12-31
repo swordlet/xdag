@@ -64,13 +64,6 @@ if(TCMALLOC_FOUND)
 else()
   message(FATAL_ERROR "Failed to find TCMalloc dependency!")
 endif()
-
-find_package(TCMalloc CONFIG)
-if(TCMALLOC_FOUND)
-  message("-- Found TCMalloc: include ${TCMALLOC_INCLUDE_DIR}  libraries ${TCMALLOC_LIBRARY} ${PROFILER_LIBRARY}")
-else()
-  message(FATAL_ERROR "Failed to find TCMalloc dependency!")
-endif()
 #[3]end
 
 #[4]find original libraries in system start

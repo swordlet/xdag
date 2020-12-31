@@ -15,6 +15,8 @@
 
 /* version history
 
+0.4.0 rocksdb store
+
 0.3.1 apollo feature hark fork
 
 0.2.3 bug with payments is fixed
