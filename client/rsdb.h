@@ -44,27 +44,31 @@ typedef enum xd_rsdb_op_result {
     XDAG_RSDB_DELETE_ERROR                =  5
 } xd_rsdb_op_t;
 
-typedef enum xd_rsdb_key_type {
-    SETTING_VERSION                       =  0x10,
-    SETTING_CREATED                       =  0x11,
-    SETTING_STATS                         =  0x12,
-    SETTING_EXT_STATS                     =  0x13,
-    SETTING_PRE_TOP_MAIN                  =  0x14,
-    SETTING_TOP_MAIN                      =  0x15,
-    SETTING_OUR_FIRST_HASH                =  0x16,
-    SETTING_OUR_LAST_HASH                 =  0x17,
-    SETTING_OUR_BALANCE                   =  0x18,
-    SETTING_CUR_TIME                      =  0x19,
-    HASH_ORP_BLOCK                        =  0x20,
-    HASH_EXT_BLOCK                        =  0x21,
-    HASH_BLOCK_INTERNAL                   =  0x22,
-    HASH_BLOCK_OUR                        =  0x23,
-    HASH_BLOCK_REMARK                     =  0x24,
-    HASH_BLOCK_BACKREF                    =  0x25,
-    HASH_BLOCK_CACHE                      =  0x26,
-} xd_rsdb_key_t;
+typedef enum xd_rsdb_column_type {
+    SETTING                               =  0x00,
+    HASH_ORP_BLOCK                        =  0x01,
+    HASH_EXT_BLOCK                        =  0x02,
+    HASH_BLOCK_INTERNAL                   =  0x03,
+    HASH_BLOCK_OUR                        =  0x04,
+    HASH_BLOCK_REMARK                     =  0x05,
+    HASH_BLOCK_BACKREF                    =  0x06,
+    HASH_BLOCK_CACHE                      =  0x07,
+    HEIGHT_BLOCK                          =  0x08,
+    COLUMN_DEFAULT                        =  0x09
+} xd_rsdb_column_type_t;
 
-
+typedef enum xd_rsdb_setting_type {
+    SETTING_VERSION                       =  0x01,
+    SETTING_CREATED                       =  0x02,
+    SETTING_STATS                         =  0x03,
+    SETTING_EXT_STATS                     =  0x04,
+    SETTING_PRE_TOP_MAIN                  =  0x05,
+    SETTING_TOP_MAIN                      =  0x06,
+    SETTING_OUR_FIRST_HASH                =  0x07,
+    SETTING_OUR_LAST_HASH                 =  0x08,
+    SETTING_OUR_BALANCE                   =  0x09,
+    SETTING_CUR_TIME                      =  0x10
+} xd_rsdb_setting_type_t;
 
 xd_rsdb_op_t xd_rsdb_pre_init(int read_only);
 xd_rsdb_op_t xd_rsdb_init(xdag_time_t *time);
@@ -93,7 +97,7 @@ xd_rsdb_op_t xd_rsdb_put_bi(struct block_internal *bi);
 xd_rsdb_op_t xd_rsdb_putkey(xd_rsdb_column_handle column_handle, const char* key, size_t klen, const char* value, size_t vlen);
 xd_rsdb_op_t xd_rsdb_put_backref(xdag_hashlow_t backref, struct block_internal*);
 xd_rsdb_op_t xd_rsdb_put_ournext(xdag_hashlow_t hash, xdag_hashlow_t next);
-xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_key_t type, const char* value, size_t vlen);
+xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_setting_type_t type, const char* value, size_t vlen);
 xd_rsdb_op_t xd_rsdb_put_orpblock(xdag_hashlow_t hash, struct xdag_block* xb);
 xd_rsdb_op_t xd_rsdb_put_extblock(xdag_hashlow_t hash, struct xdag_block* xb);
 xd_rsdb_op_t xd_rsdb_put_stats(xdag_time_t time);

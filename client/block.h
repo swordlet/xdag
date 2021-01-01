@@ -111,7 +111,6 @@ struct block_internal {
     xdag_hashlow_t ref;
     xdag_hashlow_t link[MAX_LINKS];
     uint64_t height;
-    atomic_uintptr_t remark;
     uint16_t flags, in_mask, n_our_key;
     uint8_t nlinks:4, max_diff_link:4, reserved;
 };

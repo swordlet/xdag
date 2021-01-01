@@ -50,7 +50,7 @@ xd_rsdb_op_t xd_rsdb_init(xdag_time_t *time)
     char key[1] = {[0]=SETTING_CREATED};
     char* value = NULL;
     size_t vlen = 0;
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], key, 1, &vlen);
     if(!value) {
         xd_rsdb_put_setting(SETTING_VERSION, XDAG_VERSION, strlen(XDAG_VERSION));
         xd_rsdb_put_setting(SETTING_CREATED, "done", strlen("done"));
@@ -61,7 +61,7 @@ xd_rsdb_op_t xd_rsdb_init(xdag_time_t *time)
         value = NULL;
         xd_rsdb_load(g_xdag_rsdb);
         char time_key[1] = {[0]=SETTING_CUR_TIME};
-        if((value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], time_key, 1, &vlen))) {
+        if((value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], time_key, 1, &vlen))) {
             memcpy(time, value, sizeof(xdag_time_t));
             free(value);
         }
@@ -81,7 +81,7 @@ xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db)
     char top_hash_key[1] ={[0]=SETTING_TOP_MAIN};
     char *value = NULL;
     size_t vlen = 0;
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], top_hash_key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], top_hash_key, 1, &vlen);
     if(value)
     {
         memcpy(&top_main_chain, value, sizeof(top_main_chain));
@@ -92,7 +92,7 @@ xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db)
     }
 
     char pre_top_main_key[1] ={[0]=SETTING_PRE_TOP_MAIN};
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], pre_top_main_key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], pre_top_main_key, 1, &vlen);
     if(value)
     {
         memcpy(&pretop_main_chain, value, sizeof(pretop_main_chain));
@@ -103,7 +103,7 @@ xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db)
     }
 
     char ourfirst_hash_key[1] ={[0]=SETTING_OUR_FIRST_HASH};
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], ourfirst_hash_key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], ourfirst_hash_key, 1, &vlen);
     if(value)
     {
         memcpy(g_ourfirst_hash, value, sizeof(g_ourfirst_hash));
@@ -112,7 +112,7 @@ xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db)
     }
 
     char ourlast_hash_key[1] ={[0]=SETTING_OUR_LAST_HASH};
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], ourlast_hash_key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], ourlast_hash_key, 1, &vlen);
     if(value)
     {
         memcpy(g_ourlast_hash, value, sizeof(g_ourlast_hash));
@@ -121,7 +121,7 @@ xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db)
     }
 
     char balance_key[1] ={[0]=SETTING_OUR_BALANCE};
-    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], balance_key, 1, &vlen);
+    value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], balance_key, 1, &vlen);
     if(value)
     {
         memcpy(&g_balance, value, sizeof(g_balance));
@@ -164,6 +164,7 @@ xd_rsdb_op_t xd_rsdb_conf(xd_rsdb_t  *db)
     // set max open file limit
     rocksdb_options_set_max_open_files(options, -1);
     rocksdb_options_set_create_if_missing(options, 1);
+    rocksdb_options_set_create_missing_column_families(options, 1);
     
     rocksdb_options_set_compaction_style(options, rocksdb_level_compaction);
     rocksdb_options_set_write_buffer_size(options, 67108864);// 64MB
@@ -198,55 +199,46 @@ xd_rsdb_op_t xd_rsdb_column_conf(xd_rsdb_t  *db)
     rocksdb_options_t* cf_options = rocksdb_options_create();
     
     // [0] internal block(key="num", value="SETTING")
-    db->cf->colum_name[0] = "SETTING";
-    db->cf->column_option[0] = cf_options;
+    db->cf->colum_name[SETTING] = "SETTING";
+    db->cf->column_option[SETTING] = cf_options;
 
-    // [1] internal block(key="hash", value="ORP_BLOCK")
-    db->cf->colum_name[1] = "ORP_BLOCK";
-    db->cf->column_option[1] = cf_options;
+    // [1] internal block(key="hash", value="HASH_ORP_BLOCK")
+    db->cf->colum_name[HASH_ORP_BLOCK] = "HASH_ORP_BLOCK";
+    db->cf->column_option[HASH_ORP_BLOCK] = cf_options;
 
-    // [2] internal block(key="hash", value="EXT_BLOCK")
-    db->cf->colum_name[2] = "EXT_BLOCK";
-    db->cf->column_option[2] = cf_options;
+    // [2] internal block(key="hash", value="HASH_EXT_BLOCK")
+    db->cf->colum_name[HASH_EXT_BLOCK] = "HASH_EXT_BLOCK";
+    db->cf->column_option[HASH_EXT_BLOCK] = cf_options;
 
-    // [3] internal block(key="hash", value="BLOCK_INTERNAL")
-    db->cf->colum_name[3] = "BLOCK_INTERNAL";
-    db->cf->column_option[3] = cf_options;
+    // [3] internal block(key="hash", value="HASH_BLOCK_INTERNAL")
+    db->cf->colum_name[HASH_BLOCK_INTERNAL] = "HASH_BLOCK_INTERNAL";
+    db->cf->column_option[HASH_BLOCK_INTERNAL] = cf_options;
 
-    // [4] internal block(key="hash", value="BLOCK_OUR")
-    db->cf->colum_name[4] = "BLOCK_OUR";
-    db->cf->column_option[4] = cf_options;
+    // [4] internal block(key="hash", value="HASH_BLOCK_OUR")
+    db->cf->colum_name[HASH_BLOCK_OUR] = "HASH_BLOCK_OUR";
+    db->cf->column_option[HASH_BLOCK_OUR] = cf_options;
 
-    // [5] internal block(key="hash", value="BLOCK_REMARK")
-    db->cf->colum_name[5] = "BLOCK_REMARK";
-    db->cf->column_option[5] = cf_options;
+    // [5] internal block(key="hash", value="HASH_BLOCK_REMARK")
+    db->cf->colum_name[HASH_BLOCK_REMARK] = "HASH_BLOCK_REMARK";
+    db->cf->column_option[HASH_BLOCK_REMARK] = cf_options;
 
-    // [6] internal block(key="hash", value="BLOCK_BACKREF")
-    db->cf->colum_name[6] = "BLOCK_BACKREF";
-    db->cf->column_option[6] = cf_options;
+    // [6] internal block(key="hash", value="HASH_BLOCK_BACKREF")
+    db->cf->colum_name[HASH_BLOCK_BACKREF] = "HASH_BLOCK_BACKREF";
+    db->cf->column_option[HASH_BLOCK_BACKREF] = cf_options;
 
     // [7] internal block(key="hash", value="BLOCK_CACHE")
-    db->cf->colum_name[7] = "BLOCK_CACHE";
-    db->cf->column_option[7] = cf_options;
+    db->cf->colum_name[HASH_BLOCK_CACHE] = "HASH_BLOCK_CACHE";
+    db->cf->column_option[HASH_BLOCK_CACHE] = cf_options;
 
     // [8] internal block(key="hash", value="HEIGHT_BLOCK")
-    db->cf->colum_name[8] = "HEIGHT_BLOCK";
-    db->cf->column_option[8] = cf_options;
+    db->cf->colum_name[HEIGHT_BLOCK] = "HEIGHT_BLOCK";
+    db->cf->column_option[HEIGHT_BLOCK] = cf_options;
     
     // [9] default
-    db->cf->colum_name[9] = "default";
-    db->cf->column_option[9] = cf_options;
+    db->cf->colum_name[COLUMN_DEFAULT] = "default";
+    db->cf->column_option[COLUMN_DEFAULT] = cf_options;
 
     return XDAG_RSDB_OP_SUCCESS;
-}
-
-xd_rsdb_op_t xd_rsdb_column_setup(xd_rsdb_t  *rsdb)
-{
-    char *errmsg = NULL;
-    for(int i = 0; i < RSDB_MAX_COLUMN; i++) {
-        rsdb->cf->column_handle[i] = rocksdb_create_column_family(rsdb->db, rsdb->cf->column_option[i], rsdb->cf->colum_name[i], &errmsg);
-        RSDB_ASSERT_ERROR(errmsg);
-    }
 }
 
 xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t* rsdb, int read_only)
@@ -255,9 +247,7 @@ xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t* rsdb, int read_only)
     if(read_only) {
         rsdb->db = rocksdb_open_for_read_only_column_families(rsdb->options, rsdb->config->db_path, RSDB_MAX_COLUMN, (const char**)rsdb->cf->colum_name, (const rocksdb_options_t**)rsdb->cf->column_option, rsdb->cf->column_handle, (unsigned char)0, &errmsg);
     } else {
-        rsdb->db = rocksdb_open(rsdb->options, rsdb->config->db_path, &errmsg);
-//        rsdb->db = rocksdb_open_column_families(rsdb->options, rsdb->config->db_path, RSDB_MAX_COLUMN, (const char**)rsdb->cf->colum_name, (const rocksdb_options_t**)rsdb->cf->column_option, rsdb->cf->column_handle, &errmsg);
-        xd_rsdb_column_setup(rsdb);
+        rsdb->db = rocksdb_open_column_families(rsdb->options, rsdb->config->db_path, RSDB_MAX_COLUMN, (const char**)rsdb->cf->colum_name, (const rocksdb_options_t**)rsdb->cf->column_option, rsdb->cf->column_handle, &errmsg);
     }
 
     if(errmsg)
@@ -300,7 +290,7 @@ xd_rsdb_op_t xd_rsdb_get_bi(xdag_hashlow_t hash, struct block_internal *bi)
 {
 	if (!hash || !bi) return XDAG_RSDB_NULL;
 	size_t vlen = 0;
-	char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[3], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
+	char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_INTERNAL], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
 	if(!value)
 		return XDAG_RSDB_NULL;
 	
@@ -319,7 +309,7 @@ xd_rsdb_op_t xd_rsdb_get_ournext(xdag_hashlow_t hash, xdag_hashlow_t next)
 {
     if (!hash) return XDAG_RSDB_NULL;
     size_t vlen = 0;
-    char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[4], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
+    char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_OUR], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
     if(!value)
         return XDAG_RSDB_NULL;
 
@@ -356,19 +346,19 @@ static xd_rsdb_op_t xd_rsdb_get_xdblock(xdag_hashlow_t hash, xd_rsdb_column_hand
 xd_rsdb_op_t xd_rsdb_get_orpblock(xdag_hashlow_t hash, struct xdag_block *xb)
 {
     //HASH_ORP_BLOCK
-    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[1], xb);
+    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK], xb);
 }
 
 xd_rsdb_op_t xd_rsdb_get_extblock(xdag_hashlow_t hash, struct xdag_block *xb)
 {
     //HASH_EXT_BLOCK
-    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[2], xb);
+    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK], xb);
 }
 
 xd_rsdb_op_t xd_rsdb_get_cacheblock(xdag_hashlow_t hash, struct xdag_block *xb)
 {
     //HASH_BLOCK_CACHE
-    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[7], xb);;
+    return xd_rsdb_get_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_CACHE], xb);;
 }
 
 xd_rsdb_op_t xd_rsdb_get_stats(void)
@@ -376,7 +366,7 @@ xd_rsdb_op_t xd_rsdb_get_stats(void)
     char key[1] = {[0] = SETTING_STATS};
     struct xdag_stats* p = NULL;
     size_t vlen = 0;
-    p = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], key, 1, &vlen);
+    p = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], key, 1, &vlen);
     if(p) {
         memcpy(&g_xdag_stats, p, sizeof(g_xdag_stats));
         free(p);
@@ -389,7 +379,7 @@ xd_rsdb_op_t xd_rsdb_get_extstats()
     char key[1] = {[0] = SETTING_EXT_STATS};
     struct xdag_ext_stats* pexs = NULL;
     size_t vlen = 0;
-    pexs = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[0], key, 1, &vlen);
+    pexs = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[SETTING], key, 1, &vlen);
     if(pexs) {
         memcpy(&g_xdag_extstats, pexs, sizeof(g_xdag_extstats));
         free(pexs);
@@ -401,7 +391,7 @@ xd_rsdb_op_t xd_rsdb_get_remark(xdag_hashlow_t hash, xdag_remark_t remark)
 {
     if(!remark) return XDAG_RSDB_NULL;
     size_t vlen = 0;
-    char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[5], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
+    char *value = xd_rsdb_getkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_REMARK], (const char*)hash, sizeof(xdag_hashlow_t), &vlen);
 
     if(!value)
         return XDAG_RSDB_NULL;
@@ -458,13 +448,12 @@ xd_rsdb_op_t xd_rsdb_putkey(xd_rsdb_column_handle column_handle, const char* key
 
 xd_rsdb_op_t xd_rsdb_put_backref(xdag_hashlow_t backref, struct block_internal* bi)
 {
-    int retcode = 0;
     if(!backref) return XDAG_RSDB_NULL;
-    char key[RSDB_KEY_LEN * 2 + 1] = {0};
+    int retcode = 0;
+    char key[RSDB_KEY_LEN + sizeof(xtime_t)] = {0};
     memcpy(key, backref, RSDB_KEY_LEN);
-    key[RSDB_KEY_LEN] = '_';
-    memcpy(key + RSDB_KEY_LEN + 1, bi->hash, RSDB_KEY_LEN);
-    retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[6], (const char*)backref, RSDB_KEY_LEN * 2 + 1, (const char *) bi->hash, sizeof(xdag_hashlow_t));
+    memcpy(key + RSDB_KEY_LEN, &(bi->time), sizeof(xtime_t));
+    retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_BACKREF], (const char*)key, RSDB_KEY_LEN + sizeof(xtime_t), (const char *)bi->hash, RSDB_KEY_LEN);
     if(retcode) {
         return retcode;
     }
@@ -474,17 +463,17 @@ xd_rsdb_op_t xd_rsdb_put_backref(xdag_hashlow_t backref, struct block_internal* 
 xd_rsdb_op_t xd_rsdb_put_ournext(xdag_hashlow_t hash, xdag_hashlow_t next)
 {
     if(!hash) return XDAG_RSDB_NULL;
-    int retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[4], (const char*)hash, RSDB_KEY_LEN, (const char *)next, sizeof(xdag_hashlow_t));
+    int retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_OUR], (const char*)hash, RSDB_KEY_LEN, (const char *)next, sizeof(xdag_hashlow_t));
     if(retcode) {
         return retcode;
     }
     return XDAG_RSDB_OP_SUCCESS;
 }
 
-xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_key_t type, const char* value, size_t vlen)
+xd_rsdb_op_t xd_rsdb_put_setting(xd_rsdb_setting_type_t type, const char* value, size_t vlen)
 {
     char key[1] = {[0] = type};
-    xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[0], key, 1, value, vlen);
+    xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[SETTING], key, 1, value, vlen);
     return XDAG_RSDB_OP_SUCCESS;
 }
 
@@ -502,7 +491,7 @@ static xd_rsdb_op_t xd_rsdb_put_xdblock(xdag_hashlow_t hash, const xd_rsdb_colum
 xd_rsdb_op_t xd_rsdb_put_bi(struct block_internal *bi)
 {
     if(!bi) return XDAG_RSDB_NULL;
-    int retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[3], (const char*)bi->hash, sizeof(xdag_hashlow_t), (const char *) bi, sizeof(struct block_internal));
+    int retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_INTERNAL], (const char*)bi->hash, sizeof(xdag_hashlow_t), (const char *) bi, sizeof(struct block_internal));
     if(retcode) {
         return retcode;
     }
@@ -511,17 +500,17 @@ xd_rsdb_op_t xd_rsdb_put_bi(struct block_internal *bi)
 
 xd_rsdb_op_t xd_rsdb_put_orpblock(xdag_hashlow_t hash, struct xdag_block* xb)
 {
-    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[1], xb);
+    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK], xb);
 }
 
 xd_rsdb_op_t xd_rsdb_put_extblock(xdag_hashlow_t hash, struct xdag_block* xb)
 {
-    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[2], xb);
+    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK], xb);
 }
 
 xd_rsdb_op_t xd_rsdb_put_cacheblock(xdag_hashlow_t hash, struct xdag_block* xb)
 {
-    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[7], xb);;
+    return xd_rsdb_put_xdblock(hash, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_CACHE], xb);;
 }
 
 xd_rsdb_op_t xd_rsdb_put_stats(xdag_time_t time)
@@ -542,7 +531,7 @@ xd_rsdb_op_t xd_rsdb_put_extstats(void)
 xd_rsdb_op_t xd_rsdb_put_remark(struct block_internal* bi, xdag_remark_t strbuf)
 {
     int retcode = 0;
-    retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[5], (const char*)bi->hash, sizeof(xdag_hashlow_t), (const char *)strbuf, sizeof(xdag_remark_t));
+    retcode = xd_rsdb_putkey(g_xdag_rsdb->cf->column_handle[HASH_BLOCK_REMARK], (const char*)bi->hash, sizeof(xdag_hashlow_t), (const char *)strbuf, sizeof(xdag_remark_t));
     if(retcode) {
         return retcode;
     }
@@ -588,17 +577,17 @@ static xd_rsdb_op_t xd_rsdb_del(xdag_hashlow_t hash, const xd_rsdb_column_handle
 
 xd_rsdb_op_t xd_rsdb_del_bi(xdag_hashlow_t hash)
 {
-    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[3]);
+    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_INTERNAL]);
 }
 
 xd_rsdb_op_t xd_rsdb_del_orpblock(xdag_hashlow_t hash)
 {
-    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[1]);
+    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK]);
 }
 
 xd_rsdb_op_t xd_rsdb_del_extblock(xdag_hashlow_t hash)
 {
-    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[2]);
+    return xd_rsdb_del(hash, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK]);
 }
 
 xd_rsdb_op_t xd_rsdb_del_heighthash(uint64_t height)
