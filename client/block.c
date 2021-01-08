@@ -419,7 +419,9 @@ static void clean_extblocks()
 //        char seek_key[1] = {[0] = HASH_EXT_BLOCK};
         size_t vlen = 0;
         size_t klen = 0;
-        rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK]);
+        rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+        rocksdb_readoptions_set_fill_cache(read_options, 0);
+        rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK]);
         for (rocksdb_iter_seek_to_first(iter);
              rocksdb_iter_valid(iter) && !b_retcode;
              rocksdb_iter_next(iter))
@@ -437,6 +439,7 @@ static void clean_extblocks()
                 }
             }
         }
+        if(read_options) rocksdb_readoptions_destroy(read_options);
         if(iter) rocksdb_iter_destroy(iter);
     }
 }
@@ -934,7 +937,9 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
 //        char seek_key[1] = {[0] = HASH_ORP_BLOCK};
         size_t klen = 0;
         //HASH_ORP_BLOCK
-        rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options,g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK]);
+        rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+        rocksdb_readoptions_set_fill_cache(read_options, 0);
+        rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options,g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK]);
         for (rocksdb_iter_seek_to_first(iter);
              rocksdb_iter_valid(iter) && !b_retcode && res < XDAG_BLOCK_FIELDS;
              rocksdb_iter_next(iter))
@@ -950,6 +955,7 @@ struct xdag_block* xdag_create_block(struct xdag_field *fields, int inputsCount,
                 }
             }
         }
+        if(read_options) rocksdb_readoptions_destroy(read_options);
         if(iter) rocksdb_iter_destroy(iter);
 		pthread_mutex_unlock(&block_mutex);
 	}
@@ -1383,7 +1389,9 @@ int xdag_traverse_all_blocks(void *data, int (*callback)(void *data, xdag_hash_t
 	xdag_amount_t amount, xtime_t time))
 {
 	pthread_mutex_lock(&block_mutex);
-    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_INTERNAL]);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_fill_cache(read_options, 0);
+    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_INTERNAL]);
 
     
     for (rocksdb_iter_seek_to_first(iter);
@@ -1398,7 +1406,8 @@ int xdag_traverse_all_blocks(void *data, int (*callback)(void *data, xdag_hash_t
             printf("%s  %20.9Lf\n", address, amount2xdags(bi->amount));
         }
     }
-    rocksdb_iter_destroy(iter);
+    if(read_options) rocksdb_readoptions_destroy(read_options);
+    if(iter) rocksdb_iter_destroy(iter);
 	pthread_mutex_unlock(&block_mutex);
 	return 0;
 }
@@ -1673,7 +1682,9 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
     size_t klen = 0;
     const char *key = NULL;
     memcpy(seek_key, bi->hash, RSDB_KEY_LEN);
-    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_BACKREF]);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_fill_cache(read_options, 0);
+    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_BACKREF]);
     for (rocksdb_iter_seek(iter, seek_key, RSDB_KEY_LEN),i = 0;
          rocksdb_iter_valid(iter) && i < N;
          rocksdb_iter_next(iter))
@@ -1695,6 +1706,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
             i++;
         }
     }
+    if(read_options) rocksdb_readoptions_destroy(read_options);
     if(iter) rocksdb_iter_destroy(iter);
 
     if (n) {
@@ -1845,7 +1857,9 @@ int xdag_get_transactions(xdag_hash_t hash, void *data, int (*callback)(void*, i
     const char *key = NULL;
     memcpy(seek_key, hash, RSDB_KEY_LEN);
     //HASH_BLOCK_BACKREF
-    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_BACKREF]);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_fill_cache(read_options, 0);
+    rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_BLOCK_BACKREF]);
     for (rocksdb_iter_seek(iter, seek_key, sizeof(seek_key));
          rocksdb_iter_valid(iter) && (key = rocksdb_iter_key(iter, &klen)) && !memcmp(seek_key, key, sizeof(seek_key));
          rocksdb_iter_next(iter))
@@ -1863,6 +1877,7 @@ int xdag_get_transactions(xdag_hash_t hash, void *data, int (*callback)(void*, i
             }
         }
     }
+    if(read_options) rocksdb_readoptions_destroy(read_options);
     if(iter) rocksdb_iter_destroy(iter);
     if (!n) {
 		free(ba);
@@ -1943,8 +1958,10 @@ void xdag_list_orphan_blocks(int count, FILE *out)
 	print_header_block_list(out);
 
 	pthread_mutex_lock(&block_mutex);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_fill_cache(read_options, 0);
     rocksdb_iterator_t* iter = NULL;
-    iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK]);
+    iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_ORP_BLOCK]);
     size_t klen = 1;
     //HASH_ORP_BLOCK;
     for (rocksdb_iter_seek_to_first(iter);
@@ -1960,6 +1977,8 @@ void xdag_list_orphan_blocks(int count, FILE *out)
             }
         }
     }
+    if(read_options) rocksdb_readoptions_destroy(read_options);
+    if(iter) rocksdb_iter_destroy(iter);
 	pthread_mutex_unlock(&block_mutex);
 }
 
@@ -1970,8 +1989,10 @@ void xdag_list_extra_blocks(int count, FILE *out)
     print_header_block_list(out);
 
     pthread_mutex_lock(&block_mutex);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_fill_cache(read_options, 0);
     rocksdb_iterator_t* iter = NULL;
-    iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK]);
+    iter = rocksdb_create_iterator_cf(g_xdag_rsdb->db, read_options, g_xdag_rsdb->cf->column_handle[HASH_EXT_BLOCK]);
 //    char key[1] = {[0] = HASH_EXT_BLOCK};
     size_t klen = 1;
     for (rocksdb_iter_seek_to_first(iter);
@@ -1987,7 +2008,8 @@ void xdag_list_extra_blocks(int count, FILE *out)
             }
         }
     }
-
+    if(read_options) rocksdb_readoptions_destroy(read_options);
+    if(iter) rocksdb_iter_destroy(iter);
     pthread_mutex_unlock(&block_mutex);
 }
 
