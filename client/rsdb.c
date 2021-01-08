@@ -11,6 +11,9 @@
 #define RSDB_LOG_FREE_ERRMSG(errmsg) xdag_info("%s %lu %s \n",__FUNCTION__, __LINE__,errmsg);free(errmsg)
 #define RSDB_ASSERT_ERROR(errmsg) if(errmsg){RSDB_LOG_FREE_ERRMSG(errmsg);return XDAG_RSDB_CONF_ERROR;}
 
+static int xd_rsdb_base_memtable_size = 16;
+static int xd_rsdb_memory_multiplier = 2;
+
 xd_rsdb_op_t xd_rsdb_pre_init(int read_only)
 {
     xd_rsdb_t* rsdb = NULL;
@@ -144,82 +147,128 @@ xd_rsdb_op_t xd_rsdb_conf_check(xd_rsdb_t  *db)
     return  XDAG_RSDB_OP_SUCCESS;
 }
 
+static rocksdb_options_t* get_db_options()
+{
+    rocksdb_options_t* options = rocksdb_options_create();
+    rocksdb_options_set_create_if_missing(options, 1);
+    rocksdb_options_set_create_missing_column_families(options, 1);
+    rocksdb_options_set_memtable_whole_key_filtering(options, 1);
+    rocksdb_options_set_max_total_wal_size(options, 1 * 1024 * 1024 * 1024LL);
+    rocksdb_options_increase_parallelism(options, 4);
+    rocksdb_options_set_enable_pipelined_write(options, 1);
+    rocksdb_options_set_max_file_opening_threads(options, -1);
+    rocksdb_options_set_max_manifest_file_size(options, 100 * 1024 * 1024ULL);
+    return options;
+}
+
 xd_rsdb_op_t xd_rsdb_conf(xd_rsdb_t  *db)
 {
     int error_code = 0;
     if( (error_code = xd_rsdb_conf_check(db)) ) {
         return error_code;
     }
-    long cpus = sysconf(_SC_NPROCESSORS_ONLN);  // get # of online cores
-
-    rocksdb_options_t* options = rocksdb_options_create();
-    rocksdb_writeoptions_t* write_options = rocksdb_writeoptions_create();
-    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
-    rocksdb_filterpolicy_t *filter_policy = rocksdb_filterpolicy_create_bloom_full(10);
-
-//    rocksdb_readoptions_get_fill_cache(read_options);
-    rocksdb_readoptions_set_fill_cache(read_options, 1);
-
-
-    // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
-    rocksdb_options_increase_parallelism(options, (int)(cpus));
-
-    // set max open file limit
-    rocksdb_options_set_max_open_files(options, -1);
-    rocksdb_options_set_create_if_missing(options, 1);
-    rocksdb_options_set_create_missing_column_families(options, 1);
-
-    rocksdb_options_set_compaction_style(options, rocksdb_level_compaction);
-    rocksdb_options_set_write_buffer_size(options, 67108864);// 64MB
-    rocksdb_options_set_max_write_buffer_number(options, 3);
-    rocksdb_options_set_target_file_size_base(options, 67108864);// 64MB
-    rocksdb_options_set_max_background_compactions(options, (int)(cpus));
-    rocksdb_options_set_level0_file_num_compaction_trigger(options, 8);
-    rocksdb_options_set_level0_slowdown_writes_trigger(options, 17);
-    rocksdb_options_set_level0_stop_writes_trigger(options, 24);
-    rocksdb_options_set_num_levels(options, 4);
-    rocksdb_options_set_max_bytes_for_level_base(options, 536870912);//512MB
-    rocksdb_options_set_max_bytes_for_level_multiplier(options, 8);
-//    rocksdb_options_set_compression(options, rocksdb_lz4_compression);
-    rocksdb_readoptions_set_verify_checksums(read_options, 0);
-
-    rocksdb_block_based_table_options_t *block_based_table_options = rocksdb_block_based_options_create();
-    rocksdb_cache_t* lru_cache = rocksdb_cache_create_lru(67108864*2); // 128MB
-    rocksdb_block_based_options_set_block_cache(block_based_table_options, lru_cache);
-    rocksdb_block_based_options_set_filter_policy(block_based_table_options, filter_policy);
-    rocksdb_options_set_block_based_table_factory(options, block_based_table_options);
-
-    db->options = options;
-    db->write_options = write_options;
-    db->read_options = read_options;
-
+    db->options = get_db_options();
     return XDAG_RSDB_OP_SUCCESS;
 }
 
-static const rocksdb_options_t* get_cf_options()
+static int xd_rsdb_base_memtable_size_bytes()
 {
-    rocksdb_options_t* options = rocksdb_options_create();
-    rocksdb_filterpolicy_t *filter_policy = rocksdb_filterpolicy_create_bloom_full(10);
+    return 1024ULL * 1024 * xd_rsdb_memory_multiplier * xd_rsdb_base_memtable_size;
+}
 
-    rocksdb_options_set_compaction_style(options, rocksdb_level_compaction);
-    rocksdb_options_set_write_buffer_size(options, 67108864);// 64MB
-    rocksdb_options_set_max_write_buffer_number(options, 3);
-    rocksdb_options_set_target_file_size_base(options, 67108864);// 64MB
-    rocksdb_options_set_max_background_compactions(options, 2);
-    rocksdb_options_set_level0_file_num_compaction_trigger(options, 8);
-    rocksdb_options_set_level0_slowdown_writes_trigger(options, 17);
-    rocksdb_options_set_level0_stop_writes_trigger(options, 24);
-    rocksdb_options_set_num_levels(options, 4);
-    rocksdb_options_set_max_bytes_for_level_base(options, 536870912);//512MB
-    rocksdb_options_set_max_bytes_for_level_multiplier(options, 8);
+static rocksdb_options_t* get_base_cf_options(rocksdb_block_based_table_options_t* table_options, unsigned long long memtable_size_bytes)
+{
+    rocksdb_options_t* cf_options = rocksdb_options_create();
+    rocksdb_options_set_block_based_table_factory(cf_options, table_options);
+    rocksdb_options_set_write_buffer_size(cf_options, 67108864);// 64MB
+    rocksdb_options_set_max_write_buffer_number(cf_options, 3);
+    rocksdb_options_set_target_file_size_base(cf_options, 67108864);// 64MB
+    rocksdb_options_set_max_background_compactions(cf_options, 4);
+    rocksdb_options_set_level0_file_num_compaction_trigger(cf_options, 8);
+    rocksdb_options_set_level0_slowdown_writes_trigger(cf_options, 17);
+    rocksdb_options_set_level0_stop_writes_trigger(cf_options, 24);
+    rocksdb_options_set_num_levels(cf_options, 4);
+    rocksdb_options_set_max_bytes_for_level_base(cf_options, 536870912);//512MB
+    rocksdb_options_set_max_bytes_for_level_multiplier(cf_options, 8);
+    return cf_options;
+}
 
-    rocksdb_block_based_table_options_t *block_based_table_options = rocksdb_block_based_options_create();
-    rocksdb_cache_t* lru_cache = rocksdb_cache_create_lru(67108864 * 2); // 128MB
-    rocksdb_block_based_options_set_block_cache(block_based_table_options, lru_cache);
-    rocksdb_block_based_options_set_filter_policy(block_based_table_options, filter_policy);
-    rocksdb_options_set_block_based_table_factory(options, block_based_table_options);
+static rocksdb_block_based_table_options_t* get_table_options(size_t lru_size)
+{
+    rocksdb_block_based_table_options_t *table_options = rocksdb_block_based_options_create();
+    rocksdb_block_based_options_set_data_block_index_type(table_options, 1);
+    rocksdb_cache_t* cache = rocksdb_cache_create_lru(lru_size);
+    rocksdb_block_based_options_set_block_cache(table_options, cache);
+    rocksdb_filterpolicy_t *filter_policy = rocksdb_filterpolicy_create_bloom_full(15);
+    rocksdb_block_based_options_set_filter_policy(table_options, filter_policy);
+    rocksdb_block_based_options_set_pin_l0_filter_and_index_blocks_in_cache(table_options, 1);
+    return table_options;
+}
 
-    return options;
+static rocksdb_options_t* get_small_cf_options(rocksdb_block_based_table_options_t* factory)
+{
+    int memtable_size_bytes = 10000;
+    rocksdb_options_t* cf_options = (rocksdb_options_t*)get_base_cf_options (factory, memtable_size_bytes);
+    rocksdb_options_set_level0_file_num_compaction_trigger(cf_options, 1);
+    rocksdb_options_set_max_bytes_for_level_base(cf_options, memtable_size_bytes);
+    return cf_options;
+}
+
+static const struct rocksdb_options_t* get_cf_options(const char* cf_name)
+{
+    rocksdb_options_t* cf_options = NULL;
+    int memtable_size_bytes = xd_rsdb_base_memtable_size_bytes();
+    if (strncmp("SETTING", cf_name, strlen("SETTING")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 16);
+        cf_options = get_small_cf_options (table_options);
+    }
+    else if (strncmp("HASH_ORP_BLOCK", cf_name, strlen("HASH_ORP_BLOCK")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 128);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_EXT_BLOCK", cf_name, strlen("HASH_EXT_BLOCK")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 32);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_BLOCK_INTERNAL", cf_name, strlen("HASH_BLOCK_INTERNAL")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 1024);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_BLOCK_OUR", cf_name, strlen("HASH_BLOCK_OUR")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 64);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_BLOCK_REMARK", cf_name, strlen("HASH_BLOCK_REMARK")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 64);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_BLOCK_BACKREF", cf_name, strlen("HASH_BLOCK_BACKREF")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 64);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HASH_BLOCK_CACHE", cf_name, strlen("HASH_BLOCK_CACHE")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 64);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("HEIGHT_BLOCK", cf_name, strlen("HEIGHT_BLOCK")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 32);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    else if (strncmp("default", cf_name, strlen("default")) == 0)
+    {
+        rocksdb_block_based_table_options_t *table_options = get_table_options(1024ULL * 1024 * 32);
+        cf_options = get_base_cf_options(table_options, memtable_size_bytes);
+    }
+    return cf_options;
 }
 
 /**
@@ -229,43 +278,43 @@ xd_rsdb_op_t xd_rsdb_column_conf(xd_rsdb_t  *db)
 {
     // [0] internal block(key="num", value="SETTING")
     db->cf->colum_name[SETTING] = "SETTING";
-    db->cf->column_option[SETTING] = get_cf_options();
+    db->cf->column_option[SETTING] = get_cf_options("SETTING");
 
     // [1] internal block(key="hash", value="HASH_ORP_BLOCK")
     db->cf->colum_name[HASH_ORP_BLOCK] = "HASH_ORP_BLOCK";
-    db->cf->column_option[HASH_ORP_BLOCK] = get_cf_options();
+    db->cf->column_option[HASH_ORP_BLOCK] = get_cf_options("HASH_ORP_BLOCK");
 
     // [2] internal block(key="hash", value="HASH_EXT_BLOCK")
     db->cf->colum_name[HASH_EXT_BLOCK] = "HASH_EXT_BLOCK";
-    db->cf->column_option[HASH_EXT_BLOCK] = get_cf_options();
+    db->cf->column_option[HASH_EXT_BLOCK] = get_cf_options("HASH_EXT_BLOCK");
 
     // [3] internal block(key="hash", value="HASH_BLOCK_INTERNAL")
     db->cf->colum_name[HASH_BLOCK_INTERNAL] = "HASH_BLOCK_INTERNAL";
-    db->cf->column_option[HASH_BLOCK_INTERNAL] = get_cf_options();
+    db->cf->column_option[HASH_BLOCK_INTERNAL] = get_cf_options("HASH_BLOCK_INTERNAL");
 
     // [4] internal block(key="hash", value="HASH_BLOCK_OUR")
     db->cf->colum_name[HASH_BLOCK_OUR] = "HASH_BLOCK_OUR";
-    db->cf->column_option[HASH_BLOCK_OUR] = get_cf_options();
+    db->cf->column_option[HASH_BLOCK_OUR] = get_cf_options("HASH_BLOCK_OUR");
 
     // [5] internal block(key="hash", value="HASH_BLOCK_REMARK")
     db->cf->colum_name[HASH_BLOCK_REMARK] = "HASH_BLOCK_REMARK";
-    db->cf->column_option[HASH_BLOCK_REMARK] = get_cf_options();
+    db->cf->column_option[HASH_BLOCK_REMARK] = get_cf_options("HASH_BLOCK_REMARK");
 
     // [6] internal block(key="hash", value="HASH_BLOCK_BACKREF")
     db->cf->colum_name[HASH_BLOCK_BACKREF] = "HASH_BLOCK_BACKREF";
-    db->cf->column_option[HASH_BLOCK_BACKREF] = get_cf_options();
+    db->cf->column_option[HASH_BLOCK_BACKREF] = get_cf_options("HASH_BLOCK_BACKREF");
 
-    // [7] internal block(key="hash", value="BLOCK_CACHE")
+    // [7] internal block(key="hash", value="HASH_BLOCK_CACHE")
     db->cf->colum_name[HASH_BLOCK_CACHE] = "HASH_BLOCK_CACHE";
-    db->cf->column_option[HASH_BLOCK_CACHE] = get_cf_options();
+    db->cf->column_option[HASH_BLOCK_CACHE] = get_cf_options("HASH_BLOCK_CACHE");
 
     // [8] internal block(key="hash", value="HEIGHT_BLOCK")
     db->cf->colum_name[HEIGHT_BLOCK] = "HEIGHT_BLOCK";
-    db->cf->column_option[HEIGHT_BLOCK] = get_cf_options();
+    db->cf->column_option[HEIGHT_BLOCK] = get_cf_options("HEIGHT_BLOCK");
     
     // [9] default
     db->cf->colum_name[COLUMN_DEFAULT] = "default";
-    db->cf->column_option[COLUMN_DEFAULT] = get_cf_options();
+    db->cf->column_option[COLUMN_DEFAULT] = get_cf_options("default");
 
     return XDAG_RSDB_OP_SUCCESS;
 }
@@ -289,8 +338,6 @@ xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t* rsdb, int read_only)
 
 xd_rsdb_op_t xd_rsdb_close(xd_rsdb_t* db)
 {
-    if(db->write_options) rocksdb_writeoptions_destroy(db->write_options);
-    if(db->read_options) rocksdb_readoptions_destroy(db->read_options);
     if(db->options) rocksdb_options_destroy(db->options);
     if(db->db) rocksdb_close(db->db);
     return XDAG_RSDB_OP_SUCCESS;
@@ -300,18 +347,20 @@ xd_rsdb_op_t xd_rsdb_close(xd_rsdb_t* db)
 void* xd_rsdb_getkey(xd_rsdb_column_handle column_handle, const char* key, const size_t klen, size_t* vlen)
 {
     char *errmsg = NULL;
-    char *rocksdb_return_value = rocksdb_get_cf(g_xdag_rsdb->db, g_xdag_rsdb->read_options, column_handle, key, klen, vlen, &errmsg);
+    rocksdb_readoptions_t* read_options = rocksdb_readoptions_create();
+    char *rocksdb_return_value = rocksdb_get_cf(g_xdag_rsdb->db, read_options, column_handle, key, klen, vlen, &errmsg);
 
     if(errmsg)
     {
         if(rocksdb_return_value) {
             free(rocksdb_return_value);
         }
-        rocksdb_readoptions_destroy(g_xdag_rsdb->read_options);
+        rocksdb_readoptions_destroy(read_options);
         rocksdb_close(g_xdag_rsdb->db);
 		RSDB_LOG_FREE_ERRMSG(errmsg);
         return NULL;
     }
+    if(read_options) rocksdb_readoptions_destroy(read_options);
     return rocksdb_return_value;
 }
 
@@ -458,20 +507,21 @@ xd_rsdb_op_t xd_rsdb_get_heighthash(uint64_t height, xdag_hashlow_t hash)
 xd_rsdb_op_t xd_rsdb_putkey(xd_rsdb_column_handle column_handle, const char* key, size_t klen, const char* value, size_t vlen)
 {
     char *errmsg = NULL;
-
+    rocksdb_writeoptions_t* write_options = rocksdb_writeoptions_create();
     rocksdb_put_cf(g_xdag_rsdb->db,
-                g_xdag_rsdb->write_options,
+                   write_options,
                 column_handle,
                 key, klen,
                 value, vlen,
                 &errmsg);
     if(errmsg)
     {
-        rocksdb_writeoptions_destroy(g_xdag_rsdb->write_options);
+        rocksdb_writeoptions_destroy(write_options);
         rocksdb_close(g_xdag_rsdb->db);
         RSDB_LOG_FREE_ERRMSG(errmsg);
         return XDAG_RSDB_PUT_ERROR;
     }
+    rocksdb_writeoptions_destroy(write_options);
     return XDAG_RSDB_OP_SUCCESS;
 }
 
@@ -582,14 +632,16 @@ xd_rsdb_op_t xd_rsdb_put_heighthash(uint64_t height, xdag_hashlow_t hash)
 xd_rsdb_op_t xd_rsdb_delkey(xd_rsdb_column_handle column_handle, const char* key, size_t klen)
 {
     char *errmsg = NULL;
-    rocksdb_delete_cf(g_xdag_rsdb->db, g_xdag_rsdb->write_options, column_handle, key, klen, &errmsg);
+    rocksdb_writeoptions_t* write_options = rocksdb_writeoptions_create();
+    rocksdb_delete_cf(g_xdag_rsdb->db, write_options, column_handle, key, klen, &errmsg);
     if(errmsg)
     {
-        rocksdb_writeoptions_destroy(g_xdag_rsdb->write_options);
+        rocksdb_writeoptions_destroy(write_options);
         rocksdb_close(g_xdag_rsdb->db);
         RSDB_LOG_FREE_ERRMSG(errmsg);
         return XDAG_RSDB_DELETE_ERROR;
     }
+    rocksdb_writeoptions_destroy(write_options);
     return XDAG_RSDB_OP_SUCCESS;
 }
 

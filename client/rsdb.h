@@ -29,8 +29,6 @@ typedef struct xdag_rsdb_conf {
 typedef struct xdag_rsdb {
     xd_rsdb_conf_t                    *config;
     rocksdb_options_t                *options;
-    rocksdb_readoptions_t       *read_options;
-    rocksdb_writeoptions_t     *write_options;
     rocksdb_t                             *db;
     xd_rsdb_cf_t                          *cf;
 } xd_rsdb_t;
@@ -75,7 +73,6 @@ xd_rsdb_op_t xd_rsdb_init(xdag_time_t *time);
 xd_rsdb_op_t xd_rsdb_load(xd_rsdb_t* db);
 xd_rsdb_op_t xd_rsdb_conf_check(xd_rsdb_t  *db);
 xd_rsdb_op_t xd_rsdb_column_conf(xd_rsdb_t  *db);
-xd_rsdb_op_t xd_rsdb_column_setup(xd_rsdb_t  *db);
 xd_rsdb_op_t xd_rsdb_conf(xd_rsdb_t* db);
 xd_rsdb_op_t xd_rsdb_open(xd_rsdb_t* db, int);
 xd_rsdb_op_t xd_rsdb_close(xd_rsdb_t* db);
