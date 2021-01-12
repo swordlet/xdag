@@ -14,6 +14,9 @@
 
 
 /* version history
+0.5.0 RandomX POW
+
+0.4.0 rocksdb store
 
 0.3.1 apollo feature hark fork
 
