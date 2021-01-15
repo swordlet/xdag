@@ -990,7 +990,7 @@ int out_balances()
 	xdag_set_log_level(0);
     xdag_crypt_init();
 	memset(&d, 0, sizeof(struct out_balances_data));
-    if(xd_rsdb_pre_init(1) || xd_rsdb_init(&time)) {
+    if(xd_rsdb_pre_init(1)) {
         printf("rocksdb init fail!\n");
         return -1;
     }

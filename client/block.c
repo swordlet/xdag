@@ -1957,6 +1957,7 @@ int xdag_get_transactions(xdag_hash_t hash, void *data, int (*callback)(void*, i
             }
         }
     }
+    if(read_options) rocksdb_readoptions_destroy(read_options);
     if(iter) rocksdb_iter_destroy(iter);
     if (!n) {
 		free(ba);
