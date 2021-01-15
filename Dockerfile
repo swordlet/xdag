@@ -5,7 +5,7 @@ COPY . /usr/src/xdag
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /usr/local/xdag
 RUN apt-get update && \
-    apt-get install --yes g++ cmake automake autoconf libssl-dev libsecp256k1-dev librocksdb-dev libjemalloc-dev libgtest-dev libgoogle-perftools-dev && \
+    apt-get install --yes g++ cmake automake autoconf libssl-dev libsecp256k1-dev librocksdb-dev libjemalloc-dev libgtest-dev libgoogle-perftools-dev librandomx-dev && \
     mkdir -p /usr/src/xdag/build && \
     cd /usr/src/xdag/build && \
     cmake .. && \

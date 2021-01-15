@@ -501,18 +501,18 @@ int rx_pool_update_seed(uint64_t mem_index) {
     return 0;
 }
 
-void rx_miner_release_mem(void) {
-    pthread_mutex_lock(&g_rx_dataset_mutex);
-
-    if (g_rx_mine_cache != NULL) {
-        randomx_release_cache(g_rx_mine_cache);
-    }
-    if(g_rx_mine_dataset != NULL) {
-        randomx_release_dataset(g_rx_mine_dataset);
-    }
-
-    pthread_mutex_unlock(&g_rx_dataset_mutex);
-}
+//void rx_miner_release_mem(void) {
+//    pthread_mutex_lock(&g_rx_dataset_mutex);
+//
+//    if (g_rx_mine_cache != NULL) {
+//        randomx_release_cache(g_rx_mine_cache);
+//    }
+//    if(g_rx_mine_dataset != NULL) {
+//        randomx_release_dataset(g_rx_mine_dataset);
+//    }
+//
+//    pthread_mutex_unlock(&g_rx_dataset_mutex);
+//}
 
 void rx_pool_release_mem(void) {
     for (int i = 0; i < 2; ++i) {
