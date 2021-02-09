@@ -126,8 +126,10 @@ void rx_init_flags(int is_full_mem, uint32_t init_thread_count) {
     g_rx_pool_mem[1].switch_time = -1;
     g_rx_pool_mem[1].is_switched = -1;
 
-
+#if defined (__MACOS__) || defined (__APPLE__)
+#else
     g_randomx_flags = randomx_get_flags();
+#endif
 
     g_randomx_flags |= RANDOMX_FLAG_LARGE_PAGES;
     if (is_full_mem == 1) {
